@@ -68,9 +68,9 @@ Begin
         local_db_id int not null,
         public_db_id int null,
 
-        transport_crud_type clearing_house.transport_crud_type,
+        transport_type clearing_house.transport_type,
         transport_date timestamp with time zone,
-        transport_id_generated BOOLEAN,
+        transport_id int,
 
         Constraint pk_%s Primary Key (submission_id, source_id, %s)
 
