@@ -86,7 +86,7 @@ if __name__ == "__main__":
     # args = vars(parser.parse_args())
     # option_file = args['optionfile']
 
-    option_file = 'run_opt_ceramics'
+    option_file = 'run_opt_default'
     opts = importlib.import_module(option_file)
 
     logger.warning("Deploy target is %s on %s", opts.db_opts.get('database', '?'), opts.db_opts.get('host', '?'))
