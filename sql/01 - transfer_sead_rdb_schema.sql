@@ -1,4 +1,46 @@
 -- Drop Function If Exists clearing_house.fn_dba_get_sead_public_db_schema(text, text);
+/*********************************************************************************************************************************
+**  Function    view_foreign_keys
+**  When        2019-04-24
+**  What        Retrieves foreign keys from all schemas
+**  Who         Roger Mähler
+**  Uses        information_schema
+**  Used By     Clearing House installation. DBA.
+**  Note        Assumes all FK-constraints are single key value
+**  Revisions
+**********************************************************************************************************************************/
+create or replace view clearing_house.view_foreign_keys as (
+    with table_columns as (
+        select t.oid, ns.nspname, t.relname, attr.attname, attr.attnum
+        from pg_class t
+        join pg_namespace ns
+          on ns.oid = t.relnamespace
+        join pg_attribute attr
+          on attr.attrelid = t.oid
+         and attr.attnum > 0
+    )
+        select distinct
+                t.nspname   as schema_name,
+                t.oid       as table_oid,
+                t.relname   as table_name,
+                t.attname   as column_name,
+                t.attnum    as attnum,
+
+                s.nspname   as f_schema_name,
+                s.relname   as f_table_name,
+                s.attname   as f_column_name,
+                s.oid       as f_table_oid,
+                t.attnum    as f_attnum
+        from pg_constraint
+        join table_columns t
+          on t.oid = pg_constraint.conrelid
+         and t.attnum = pg_constraint.conkey[1]
+         and (t.attnum = any (pg_constraint.conkey))
+        join table_columns s
+          on s.oid = pg_constraint.confrelid
+         and (s.attnum = any (pg_constraint.confkey))
+        where pg_constraint.contype = 'f'::"char"
+);
 
 /*********************************************************************************************************************************
 **  Function    fn_dba_get_sead_public_db_schema
@@ -9,9 +51,9 @@
 **  Used By     Clearing House installation. DBA.
 **  Revisions   2018-06-23 Major rewrite using pg_xxx tables for faster performance and FK inclusion
 **********************************************************************************************************************************/
--- select * from clearing_house.fn_dba_get_sead_public_db_schema('public')
-CREATE OR REPLACE FUNCTION clearing_house.fn_dba_get_sead_public_db_schema(p_schema_name text default 'public', p_owner text default 'sead_master')
-    RETURNS TABLE (
+-- select * from clearing_house.fn_dba_get_sead_public_db_schema3('public')
+create or replace function clearing_house.fn_dba_get_sead_public_db_schema(p_schema_name text default 'public', p_owner text default 'sead_master')
+    returns table (
         table_schema information_schema.sql_identifier,
         table_name information_schema.sql_identifier,
         column_name information_schema.sql_identifier,
@@ -25,77 +67,69 @@ CREATE OR REPLACE FUNCTION clearing_house.fn_dba_get_sead_public_db_schema(p_sch
         is_fk information_schema.yes_or_no,
         fk_table_name information_schema.sql_identifier,
         fk_column_name information_schema.sql_identifier
-    ) LANGUAGE 'plpgsql'
-    AS $BODY$
-    Begin
-        Return Query
-        WITH fk_constraint AS (
-            SELECT DISTINCT fk.conrelid, fk.confrelid, fk.conkey,
-                    fk.confrelid::regclass::information_schema.sql_identifier AS fk_table_name,
-                    fkc.attname::information_schema.sql_identifier as fk_column_name
-            FROM pg_constraint AS fk
-            JOIN pg_attribute fkc
-            ON fkc.attrelid = fk.confrelid
-            AND fkc.attnum = fk.confkey[1]
-            WHERE fk.contype = 'f'::"char"
-        )
-            SELECT  pg_tables.schemaname::information_schema.sql_identifier AS table_schema,
-                pg_tables.tablename::information_schema.sql_identifier AS table_name,
-                pg_attribute.attname::information_schema.sql_identifier AS column_name,
-                pg_attribute.attnum::information_schema.cardinal_number AS ordinal_position,
-                format_type(pg_attribute.atttypid, NULL)::information_schema.character_data AS data_type,
-                CASE pg_attribute.atttypid
-                    WHEN 21 /*int2*/ THEN 16
-                    WHEN 23 /*int4*/ THEN 32
-                    WHEN 20 /*int8*/ THEN 64
-                    WHEN 1700 /*numeric*/ THEN
-                        CASE WHEN pg_attribute.atttypmod = -1
-                            THEN null
-                            ELSE ((pg_attribute.atttypmod - 4) >> 16) & 65535     -- calculate the precision
-                            END
-                    WHEN 700 /*float4*/ THEN 24 /*FLT_MANT_DIG*/
-                    WHEN 701 /*float8*/ THEN 53 /*DBL_MANT_DIG*/
-                    ELSE null
-                END::information_schema.cardinal_number AS numeric_precision,
-                CASE
-                WHEN pg_attribute.atttypid IN (21, 23, 20) THEN 0
-                WHEN pg_attribute.atttypid IN (1700) THEN
-                    CASE
-                        WHEN pg_attribute.atttypmod = -1 THEN null
-                        ELSE (pg_attribute.atttypmod - 4) & 65535            -- calculate the scale
-                    END
-                ELSE null
-                END::information_schema.cardinal_number AS numeric_scale,
-                CASE WHEN pg_attribute.atttypid NOT IN (1042,1043) OR pg_attribute.atttypmod = -1 THEN NULL
-                    ELSE pg_attribute.atttypmod - 4 END::information_schema.cardinal_number AS character_maximum_length,
-                CASE pg_attribute.attnotnull WHEN false THEN 'YES' ELSE 'NO' END::information_schema.yes_or_no AS is_nullable,
-                CASE WHEN pk.contype Is Null Then 'NO' Else 'YES' End::information_schema.yes_or_no AS is_pk,
-                CASE WHEN fk.conrelid Is Null Then 'NO' Else 'YES' End::information_schema.yes_or_no AS is_fk,
-                fk.fk_table_name,
-                fk.fk_column_name
-        FROM pg_tables
-        JOIN pg_class
-          ON pg_class.relname = pg_tables.tablename
-        JOIN pg_namespace ns
-          ON ns.oid = pg_class.relnamespace
-         AND ns.nspname  = pg_tables.schemaname
-        JOIN pg_attribute
-          ON pg_class.oid = pg_attribute.attrelid
-         AND pg_attribute.attnum > 0
-        LEFT JOIN pg_constraint pk
-          ON pk.contype = 'p'::"char"
-         AND pk.conrelid = pg_class.oid
-         AND (pg_attribute.attnum = ANY (pk.conkey))
-        LEFT JOIN fk_constraint AS fk
-          ON fk.conrelid = pg_class.oid
-         AND (pg_attribute.attnum = ANY (fk.conkey))
-        WHERE TRUE
-          AND pg_tables.tableowner = p_owner
-          AND pg_attribute.atttypid <> 0::oid
-          AND pg_tables.schemaname = p_schema_name
-        ORDER BY table_name, ordinal_position ASC;
-End
-$BODY$;
+    ) language 'plpgsql'
+    as $body$
+    begin
+        return query
+            select
+                pg_tables.schemaname::information_schema.sql_identifier as table_schema,
+                pg_tables.tablename::information_schema.sql_identifier  as table_name,
+                pg_attribute.attname::information_schema.sql_identifier as column_name,
+                pg_attribute.attnum::information_schema.cardinal_number as ordinal_position,
+                format_type(pg_attribute.atttypid, null)::information_schema.character_data as data_type,
+                case pg_attribute.atttypid
+                    when 21 /*int2*/ then 16
+                    when 23 /*int4*/ then 32
+                    when 20 /*int8*/ then 64
+                    when 1700 /*numeric*/ then
+                        case when pg_attribute.atttypmod = -1
+                            then null
+                            else ((pg_attribute.atttypmod - 4) >> 16) & 65535     -- calculate the precision
+                            end
+                    when 700 /*float4*/ then 24 /*flt_mant_dig*/
+                    when 701 /*float8*/ then 53 /*dbl_mant_dig*/
+                    else null
+                end::information_schema.cardinal_number as numeric_precision,
+                case
+                when pg_attribute.atttypid in (21, 23, 20) then 0
+                when pg_attribute.atttypid in (1700) then
+                    case
+                        when pg_attribute.atttypmod = -1 then null
+                        else (pg_attribute.atttypmod - 4) & 65535            -- calculate the scale
+                    end
+                else null
+                end::information_schema.cardinal_number as numeric_scale,
+                case when pg_attribute.atttypid not in (1042,1043) or pg_attribute.atttypmod = -1 then null
+                    else pg_attribute.atttypmod - 4 end::information_schema.cardinal_number as character_maximum_length,
+                case pg_attribute.attnotnull when false then 'YES' else 'NO' end::information_schema.yes_or_no as is_nullable,
+                case when pk.contype is null then 'NO' else 'YES' end::information_schema.yes_or_no as is_pk,
+                case when fk.table_oid is null then 'NO' else 'YES' end::information_schema.yes_or_no as is_fk,
+                fk.f_table_name::information_schema.sql_identifier,
+                fk.f_column_name::information_schema.sql_identifier
+        from pg_tables
+        join pg_class
+          on pg_class.relname = pg_tables.tablename
+        join pg_namespace ns
+          on ns.oid = pg_class.relnamespace
+         and ns.nspname  = pg_tables.schemaname
+        join pg_attribute
+          on pg_class.oid = pg_attribute.attrelid
+         and pg_attribute.attnum > 0
+        left join pg_constraint pk
+          on pk.contype = 'p'::"char"
+         and pk.conrelid = pg_class.oid
+         and (pg_attribute.attnum = any (pk.conkey))
+        left join clearing_house.view_foreign_keys as fk
+          on fk.table_oid = pg_class.oid
+         and fk.attnum = pg_attribute.attnum
+        where true
+          and pg_tables.tableowner = p_owner
+          and pg_attribute.atttypid <> 0::oid
+          and pg_tables.schemaname = p_schema_name
+        order by table_name, ordinal_position asc;
+end
+$body$;
+
 /*********************************************************************************************************************************
 **  View        view_clearinghouse_sead_rdb_schema_pk_columns
 **  When        2013-10-18
@@ -105,11 +139,11 @@ $BODY$;
 **  Used By     Clearing House installation. DBA.
 **  Revisions
 **********************************************************************************************************************************/
-Create Or Replace view clearing_house.view_clearinghouse_sead_rdb_schema_pk_columns as
-    Select table_schema, table_name, column_name
-    From clearing_house.fn_dba_get_sead_public_db_schema('public', 'sead_master')
-    Where is_pk = 'YES'
-;
+-- Create Or Replace view clearing_house.view_clearinghouse_sead_rdb_schema_pk_columns as
+--     Select table_schema, table_name, column_name
+--     From clearing_house.fn_dba_get_sead_public_db_schema('public', 'sead_master')
+--     Where is_pk = 'YES'
+-- ;
 
 /*********************************************************************************************************************************
 **  Function    fn_sead_entity_tables
