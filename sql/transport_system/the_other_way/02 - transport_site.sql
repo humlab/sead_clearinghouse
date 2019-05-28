@@ -56,14 +56,9 @@ CREATE OR REPLACE FUNCTION clearing_house_commit.transport_site() RETURNS TRIGGE
 
 		-- v_entity.site_preservation_status_id = clearing_house.fn_local_to_public_id(NEW.submission_id, 'tbl_site_preservation_status_id', NEW.site_preservation_status_id);
 
-		-- INSERT AGGREGATE ROOT
 		/************************************************************************************************************
 		** Insert aggregate root
 		*************************************************************************************************************/
-
-		INSERT INTO public.tbl_sites
-			SELECT *
-			FROM
 
 		INSERT INTO public.tbl_sites VALUES (v_entity.*);
 			/* ON CONFLICT UPDATE; -- NOTE! PostgreSQL >= 9.5 NEEDED: */

@@ -1,22 +1,8 @@
 
-do $$
-begin
+-- CREATE DATABASE sead_dev_clearinghouse WITH TEMPLATE sead_staging OWNER sead_master;
 
-    create schema if not exists clearing_house_commit;
+CREATE SCHEMA IF NOT EXISTS clearing_house_commit;
 
-end $$ language plpgsql;
-
-/*
-TODO: funktion som returnerar alla tabeller med pk_name
-
-            select table_schema as schema_name,
-                table_name,
-                column_name,
-                clearing_house.fn_sead_table_entity_name(table_name::name)
-            from clearing_house.fn_dba_get_sead_public_db_schema()
-            where is_pk = 'YES'
-            order by 2, 3
-*/
 /*********************************************************************************************************************************
 **  Function    fn_dba_sead_entity_tables
 **  When
@@ -25,102 +11,49 @@ TODO: funktion som returnerar alla tabeller med pk_name
 **  Used By
 **  Revisions
 **********************************************************************************************************************************/
--- Select * From  clearing_house_commit.generate_sead_tables();
+-- Select * From  clearing_house.fn_dba_sead_entity_tables();
+CREATE OR REPLACE FUNCTION clearing_house.fn_dba_sead_entity_tables()
+RETURNS void LANGUAGE 'plpgsql' AS $BODY$
+Begin
 
-create or replace function clearing_house_commit.generate_sead_tables()
-returns void language 'plpgsql' as $body$
-begin
+    Drop Table If Exists clearing_house.tbl_clearinghouse_entity_tables;
 
-    drop table if exists clearing_house_commit.tbl_sead_tables;
-    drop table if exists clearing_house_commit.tbl_sead_table_keys;
-
-    drop index if exists clearing_house_commit.idx_tbl_sead_tables_entity_name;
-
-    create table if not exists clearing_house_commit.tbl_sead_tables (
-        table_name information_schema.sql_identifier primary key,
+    Create Table If Not Exists clearing_house.tbl_clearinghouse_entity_tables (
+        table_schema information_schema.sql_identifier not null,
+        table_name information_schema.sql_identifier PRIMARY KEY,
         pk_name information_schema.sql_identifier not null,
         entity_name information_schema.sql_identifier not null,
         is_global_lookup information_schema.yes_or_no not null default('NO'),
         is_local_lookup information_schema.yes_or_no not null default('NO'),
 		is_aggregate_root information_schema.yes_or_no not null default('NO'),
-        has_foreign_key information_schema.yes_or_no not null default('NO'),
 		parent_aggregate information_schema.sql_identifier null
     );
 
-    create unique index /* 9.5+ if not exists */ idx_clearinghouse_entity_tables_entity_name
-        on clearing_house_commit.tbl_sead_tables (entity_name);
+    Drop Index If Exists clearing_house.idx_clearinghouse_entity_tables1;
+
+    Create Unique Index idx_clearinghouse_entity_tables1 On clearing_house.tbl_clearinghouse_entity_tables (entity_name);
+
+	Delete From clearing_house.tbl_clearinghouse_entity_tables;
 
 	--, is_lookup, is_aggregate_root, aggregate_root
-	insert into clearing_house_commit.tbl_sead_tables (table_name, pk_name, entity_name)
-		select x.table_name, x.column_name, clearing_house.fn_sead_table_entity_name(x.table_name::text)
-		from clearing_house.fn_dba_get_sead_public_db_schema() x
-		where TRUE
-          and x.table_schema = 'public'
-          and x.is_pk = 'YES'
-        /* 9.5+ on conflict (table_name, column_name) do update */;
+	Insert Into clearing_house.tbl_clearinghouse_entity_tables (table_schema, table_name, pk_name, entity_name)
+		Select x.table_schema, x.table_name, x.column_name,  clearing_house.fn_sead_table_entity_name(x.table_name::text)
+		From clearing_house.fn_dba_get_sead_public_db_schema() x
+		Left Join clearing_house.tbl_clearinghouse_entity_tables y
+		  On y.table_name = x.table_name
+		 And y.pk_name = x.column_name
+		Where x.is_pk = 'YES'
+		  And y.table_name Is NULL
+		Order By 2, 3;
+End
+$BODY$;
 
-    update clearing_house_commit.tbl_sead_tables
-        set is_global_lookup = 'YES'
-    where table_name like '%_types';
+ALTER FUNCTION clearing_house.fn_dba_sead_entity_tables()
+    OWNER TO clearinghouse_worker;
 
-    create table if not exists clearing_house_commit.tbl_sead_table_keys (
-        table_name information_schema.sql_identifier not null,
-        column_name information_schema.sql_identifier not null,
-        is_pk information_schema.yes_or_no not null default('NO'),
-        is_fk information_schema.yes_or_no not null default('NO'),
-        fk_table_name information_schema.sql_identifier null,
-        fk_column_name information_schema.sql_identifier null,
-        constraint pk_tbl_sead_table_keys primary key (table_name, column_name)
-    );
+Select clearing_house.fn_dba_sead_entity_tables();
 
-	insert into clearing_house_commit.tbl_sead_table_keys (table_name, column_name, is_pk, is_fk, fk_table_name, fk_column_name)
-		select table_name, column_name, is_pk, is_fk, fk_table_name, fk_column_name
-		from clearing_house.fn_dba_get_sead_public_db_schema() x
-		where TRUE
-          and x.table_schema = 'public'
-          and 'YES' in (x.is_pk, x.is_fk)
-        /* 9.5+ on conflict (table_name, column_name) do update */;
-
-    with tables_with_foreign_keys as (
-        select distinct table_name
-        from clearing_house_commit.tbl_sead_table_keys
-        where is_fk = 'YES'
-    )
-        update clearing_house_commit.tbl_sead_tables t set has_foreign_key = 'YES'
-        from tables_with_foreign_keys k
-        where k.table_name = t.table_name;
-
-end
-$body$;
-
-alter function clearing_house_commit.generate_sead_tables()
-    owner to clearinghouse_worker;
-
-Select clearing_house_commit.generate_sead_tables();
-
-/*
-
-create view view_relation_counts as
-    with foreign_keys_count as (
-        select table_name, sum(case when is_fk = 'YES' then 1 else 0 end) as fk_count
-        from clearing_house_commit.tbl_sead_table_keys
-        group by table_name
-    ), foreign_refs_count as (
-        select fk_table_name as table_name, count(*) as ref_count
-        from clearing_house_commit.tbl_sead_table_keys
-        where is_fk = 'YES'
-        group by fk_table_name
-    ) select table_name, fk_count, coalesce(ref_count,0) as ref_count
-    from foreign_keys_count x
-    left join foreign_refs_count y using (table_name)
-    where TRUE
-        -- and coalesce(ref_count,0) = 0
-        and fk_count = 0
-;
-
-select * from clearing_house_commit.tbl_clearinghouse_entity_tables;
-
-UPDATE clearing_house_commit.tbl_clearinghouse_entity_tables
+UPDATE clearing_house.tbl_clearinghouse_entity_tables
     SET is_global_lookup = 'YES'
 WHERE table_name IN (
     'tbl_activity_types',
@@ -212,6 +145,17 @@ WHERE table_name IN (
  );
 
 UPDATE clearing_house.tbl_clearinghouse_entity_tables
+    SET is_local_lookup = 'YES'
+WHERE table_name IN (
+    'tbl_coordinate_method_dimensions',
+    'tbl_aggregate_datasets',
+    'tbl_features',
+    'tbl_horizons',
+    'tbl_chronologies',
+    'tbl_projects'
+);
+
+UPDATE clearing_house.tbl_clearinghouse_entity_tables
     SET is_aggregate_root = 'YES'
 WHERE entity_name IN (
     'site',
@@ -248,6 +192,3 @@ With table_columns As (
 
     Select *
     From clearing_house.fn_dba_get_sead_public_db_schema('public') r
-
-*/
-
