@@ -1,6 +1,9 @@
 archive/
 /node_modules
 *.log
+*.output
+*.zip
+*.7z
 conf/
 public/
 dist/
