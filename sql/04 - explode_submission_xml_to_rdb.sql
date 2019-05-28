@@ -9,7 +9,7 @@
 ******************************************************************************************************************************/
 -- Select clearing_house.fn_delete_submission(4)
 
-Create Or Replace Function clearing_house.fn_delete_submission(p_submission_id int, p_clear_header boolean=FALSE, p_clear_exploded=TRUE)
+Create Or Replace Function clearing_house.fn_delete_submission(p_submission_id int, p_clear_header boolean=FALSE, p_clear_exploded boolean=TRUE)
 Returns void As $$
     Declare v_table_name_underscored character varying;
 Begin
@@ -129,10 +129,9 @@ Begin
     **/
 
     Return Query
-        Select	d.submission_id																	as submission_id,
-                --xnode(xml)																	as table_name,
-                substring(d.xml::text from '^<([[:alnum:]]+).*>')::character varying(255)		as table_name,
-                (xpath('./@length[1]', d.xml))[1]::text::int									as row_count
+        Select	d.submission_id																as submission_id,
+                substring(d.xml::text from '^<([[:alnum:]]+).*>')::character varying(255)	as table_name,
+                (xpath('//@length', d.xml))[1]::text::int								    as row_count
         From (
             Select x.submission_id, unnest(xpath('/sead-data-upload/*', x.xml)) As xml
             From clearing_house.tbl_clearinghouse_submissions as x
@@ -166,7 +165,7 @@ Begin
         Select	d.submission_id                                   							as submission_id,
                 d.table_name																as table_name,
                 substring(d.xml::text from '^<([[:alnum:]]+).*>')::character varying(255)	as column_name,
-                (xpath('./@class[1]', d.xml))[1]::character varying(255)					as column_type
+                (xpath('//@class', d.xml))[1]::character varying(255)					as column_type
         From (
             Select x.submission_id, t.table_name, unnest(xpath('/sead-data-upload/' || t.table_name || '/*[not(@clonedId)][1]/*', xml)) As xml
             From clearing_house.tbl_clearinghouse_submissions x
@@ -212,9 +211,9 @@ Begin
             From (
                 Select	d.submission_id																			as submission_id,
                         replace(substring(d.xml::text from '^<([[:alnum:]\.]+).*>'), 'com.sead.database.', '')	as table_name,
-                        ((xpath('./@id[1]', d.xml))[1])::character varying(255)									as local_db_id,
-                        ((xpath('./@clonedId[1]', d.xml))[1])::character varying(255)							as public_db_id_attribute,
-                        ((xpath('./clonedId/text()', d.xml))[1])::character varying(255)						as public_db_id_value
+                        ((xpath('//@id', d.xml))[1])::character varying(255)									as local_db_id,
+                        ((xpath('//@clonedId', d.xml))[1])::character varying(255)							as public_db_id_attribute,
+                        ((xpath('//clonedId/text()', d.xml))[1])::character varying(255)						as public_db_id_value
                 From submission_xml_data_rows as d
             ) As v;
 
@@ -256,8 +255,8 @@ Begin
         ), record_value_xml As (
             Select	x.submission_id																				As submission_id,
                     replace(substring(x.xml::text from '^<([[:alnum:]\.]+).*>'), 'com.sead.database.', '')		As table_name,
-                    nullif((xpath('./@id[1]', x.xml))[1]::character varying(255), 'NULL')::numeric::int			As local_db_id,
-                    nullif((xpath('./@clonedId[1]', x.xml))[1]::character varying(255), 'NULL')::numeric::int	As public_db_id,
+                    nullif((xpath('//@id', x.xml))[1]::character varying(255), 'NULL')::numeric::int			As local_db_id,
+                    nullif((xpath('//@clonedId', x.xml))[1]::character varying(255), 'NULL')::numeric::int	    As public_db_id,
                     unnest(xpath( '/*/*', x.xml))																As xml
             From record_xml x
         )   Select	x.submission_id																				As submission_id,
@@ -265,10 +264,10 @@ Begin
                     x.local_db_id																				As local_db_id,
                     x.public_db_id																				As public_db_id,
                     substring(x.xml::character varying(255) from '^<([[:alnum:]]+).*>')::character varying(255)	As column_name,
-                    nullif((xpath('./@class[1]', x.xml))[1]::character varying, 'NULL')::character varying		As column_type,
-                    nullif((xpath('./@id[1]', x.xml))[1]::character varying(255), 'NULL')::numeric::int			As fk_local_db_id,
-                    nullif((xpath('./@clonedId[1]', x.xml))[1]::character varying(255), 'NULL')::numeric::int	As fk_public_db_id,
-                    nullif((xpath('./text()', x.xml))[1]::text, 'NULL')::text									As value
+                    nullif((xpath('//@class', x.xml))[1]::character varying, 'NULL')::character varying		    As column_type,
+                    nullif((xpath('//@id', x.xml))[1]::character varying(255), 'NULL')::numeric::int			As fk_local_db_id,
+                    nullif((xpath('//@clonedId', x.xml))[1]::character varying(255), 'NULL')::numeric::int	    As fk_public_db_id,
+                    nullif((xpath('//text()', x.xml))[1]::text, 'NULL')::text									As value
             From record_value_xml x;
 End
 $BODY$;
@@ -455,28 +454,33 @@ Create Or Replace View clearing_house.view_clearinghouse_local_fk_references As
     **	Revisions
     **/
 
-    Select v.submission_id, v.local_db_id, c.table_id, c.column_id,
-            v.fk_local_db_id, fk_t.table_id as fk_table_id, fk_c.column_id as fk_column_id
-    From clearing_house.tbl_clearinghouse_submission_xml_content_values v
-    Join clearing_house.tbl_clearinghouse_submission_xml_content_columns c
-        On c.submission_id = v.submission_id
-        And c.table_id = v.table_id
-        And c.column_id = v.column_id
-    Join clearing_house.tbl_clearinghouse_submission_tables fk_t
-        On fk_t.table_name_underscored = c.fk_table_underscored
-    Join clearing_house.view_clearinghouse_SEAD_rdb_schema_pk_columns s
-        On s.table_schema = 'public'
-        And s.table_name = fk_t.table_name_underscored
-    Join clearing_house.tbl_clearinghouse_submission_xml_content_columns fk_c
-        On fk_c.submission_id = v.submission_id
-        And fk_c.table_id = fk_t.table_id
-        And fk_c.column_name_underscored = s.column_name
-    Join clearing_house.tbl_clearinghouse_submission_xml_content_values fk_v
-        On fk_v.submission_id = v.submission_id
-        And fk_v.table_id = fk_t.table_id
-        And fk_v.column_id = fk_c.column_id
-        And fk_v.local_db_id = v.fk_local_db_id
-    Where v.fk_flag = true;
+    with sead_rdb_schema_pk_columns as (
+        Select table_schema, table_name, column_name
+        From clearing_house.fn_dba_get_sead_public_db_schema('public', 'sead_master')
+        Where is_pk = 'YES'
+    )
+        Select v.submission_id, v.local_db_id, c.table_id, c.column_id,
+                v.fk_local_db_id, fk_t.table_id as fk_table_id, fk_c.column_id as fk_column_id
+        From clearing_house.tbl_clearinghouse_submission_xml_content_values v
+        Join clearing_house.tbl_clearinghouse_submission_xml_content_columns c
+            On c.submission_id = v.submission_id
+            And c.table_id = v.table_id
+            And c.column_id = v.column_id
+        Join clearing_house.tbl_clearinghouse_submission_tables fk_t
+            On fk_t.table_name_underscored = c.fk_table_underscored
+        Join sead_rdb_schema_pk_columns s
+            On s.table_schema = 'public'
+            And s.table_name = fk_t.table_name_underscored
+        Join clearing_house.tbl_clearinghouse_submission_xml_content_columns fk_c
+            On fk_c.submission_id = v.submission_id
+            And fk_c.table_id = fk_t.table_id
+            And fk_c.column_name_underscored = s.column_name
+        Join clearing_house.tbl_clearinghouse_submission_xml_content_values fk_v
+            On fk_v.submission_id = v.submission_id
+            And fk_v.table_id = fk_t.table_id
+            And fk_v.column_id = fk_c.column_id
+            And fk_v.local_db_id = v.fk_local_db_id
+        Where v.fk_flag = true;
 
 -- TODO: Review how public_db_id (cloned_db) are handled. They are filtered out from the following funciton since they have no attrbute values (only id)
 Create Or Replace Function clearing_house.fn_get_extracted_values_as_arrays(p_submission_id int, p_table_name_underscored character varying(255))
