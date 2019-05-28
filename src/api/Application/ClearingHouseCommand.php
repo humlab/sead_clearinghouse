@@ -242,6 +242,9 @@ namespace Application {
          function executeCommand($user_id, $payload)
          {
             $entity = $payload;
+            if ($user_id == 0) {
+                $entity['create_time'] = \InfraStructure\Utility::Now();
+            }
             $this->locator->getUserService()->saveUser($entity);
             return $entity;
          }
