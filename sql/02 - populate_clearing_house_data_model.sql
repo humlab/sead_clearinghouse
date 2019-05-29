@@ -10,7 +10,6 @@
 **********************************************************************************************************************************/
 -- Select clearing_house.fn_dba_populate_clearing_house_db_model();
 Create Or Replace Function clearing_house.fn_dba_populate_clearing_house_db_model() Returns void As $$
-
 Begin
 
     If (Select Count(*) From clearing_house.tbl_clearinghouse_settings) = 0 Then
@@ -95,66 +94,54 @@ This is an auto-generated mail from the SEAD Clearing House system.
 
     End If;
 
-    If (Select Count(*) From clearing_house.tbl_clearinghouse_info_references) = 0 Then
+    insert into clearing_house.tbl_clearinghouse_info_references (info_reference_type, display_name, href)
+        values
+            ('link', 'SEAD overview article',  'http://bugscep.com/phil/publications/Buckland2010_jns.pdf'),
+            ('link', 'Popular science description of SEAD aims',  'http://bugscep.com/phil/publications/buckland2011_international_innovation.pdf')
+        on conflict do nothing;
 
-        Insert Into clearing_house.tbl_clearinghouse_info_references (info_reference_type, display_name, href)
-            Values
-                ('link', 'SEAD overview article',  'http://bugscep.com/phil/publications/Buckland2010_jns.pdf'),
-                ('link', 'Popular science description of SEAD aims',  'http://bugscep.com/phil/publications/buckland2011_international_innovation.pdf');
+    insert into clearing_house.tbl_clearinghouse_use_cases (use_case_id, use_case_name, entity_type_id)
+        values  (0, 'General', 0),
+                (1, 'Login', 1),
+                (2, 'Logout', 1),
+                (3, 'Upload submission', 2),
+                (4, 'Accept submission', 2),
+                (5, 'Reject submission', 2),
+                (6, 'Open submission', 2),
+                (7, 'Process submission', 2),
+                (8, 'Transfer submission', 2),
+                (9, 'Add reject cause', 2),
+                (10, 'Delete reject cause', 2),
+                (11, 'Claim submission', 2),
+                (12, 'Unclaim submission', 2),
+                (13, 'Execute report', 2),
+                (20, 'Add user', 1),
+                (21, 'Change user', 1),
+                (22, 'Send reminder', 2),
+                (23, 'Reclaim submission', 2),
+                (24, 'Nag', 0)
+        on conflict (use_case_id)
+            do update
+                set use_case_name = excluded.use_case_name,
+                    entity_type_id = excluded.entity_type_id;
 
-    End If;
+    insert into clearing_house.tbl_clearinghouse_data_provider_grades (grade_id, description)
+        values (0, 'n/a'), (1, 'Normal'), (2, 'Good'), (3, 'Excellent')
+        on conflict (grade_id)
+            do update
+                set description = excluded.description;
 
-    If (Select Count(*) From clearing_house.tbl_clearinghouse_use_cases) = 0 Then
-
-        -- Update clearing_house.tbl_clearinghouse_use_cases Set entity_type_id = 1 Where use_case_id In (1,2,20,21)
-        Insert Into clearing_house.tbl_clearinghouse_use_cases (use_case_id, use_case_name, entity_type_id)
-            Values (0, 'General', 0),
-				   (1, 'Login', 1),
-				   (2, 'Logout', 1),
-				   (3, 'Upload submission', 2),
-				   (4, 'Accept submission', 2),
-				   (5, 'Reject submission', 2),
-				   (6, 'Open submission', 2),
-				   (7, 'Process submission', 2),
-				   (8, 'Transfer submission', 2),
-				   (9, 'Add reject cause', 2),
-				   (10, 'Delete reject cause', 2),
-				   (11, 'Claim submission', 2),
-				   (12, 'Unclaim submission', 2),
-				   (13, 'Execute report', 2),
-				   (20, 'Add user', 1),
-				   (21, 'Change user', 1),
-                   (22, 'Send reminder', 2),
-                   (23, 'Reclaim submission', 2),
-                   (24, 'Nag', 0)
-
-        ;
-
-    End If;
-
-
-    If (Select Count(*) From clearing_house.tbl_clearinghouse_data_provider_grades) = 0 Then
-
-        Insert Into clearing_house.tbl_clearinghouse_data_provider_grades (grade_id, description)
-			Values (0, 'n/a'), (1, 'Normal'), (2, 'Good'), (3, 'Excellent');
-
-    End If;
-
-    If (Select Count(*) From clearing_house.tbl_clearinghouse_user_roles) = 0 Then
-
-        Insert Into clearing_house.tbl_clearinghouse_user_roles (role_id, role_name)
-            Values (0, 'Undefined'),
-				   (1, 'Reader'),
-				   (2, 'Normal'),
-				   (3, 'Administrator'),
-				   (4, 'Data Provider');
-
-    End If;
-
+    insert into clearing_house.tbl_clearinghouse_user_roles (role_id, role_name)
+        values (0, 'Undefined'),
+                (1, 'Reader'),
+                (2, 'Normal'),
+                (3, 'Administrator'),
+                (4, 'Data Provider')
+        on conflict (role_id)
+            do update
+                set role_name = excluded.role_name;
 
     If (Select Count(*) From clearing_house.tbl_clearinghouse_users) = 0 Then
-
-		-- update clearing_house.tbl_clearinghouse_users set signal_receiver = true where user_id = 2
         Insert Into clearing_house.tbl_clearinghouse_users (user_name, password, full_name, role_id, data_provider_grade_id, create_date, email, signal_receiver)
             Values ('test_reader', '$2y$10$/u3RCeK8Q.2s75UsZmvQ4.4TOxvLNKH8EoH4k6NYYtkAMavjP.dry', 'Test Reader', 1, 0, '2013-10-08', 'roger.mahler@umu.se', false),
                    ('test_normal', '$2y$10$/u3RCeK8Q.2s75UsZmvQ4.4TOxvLNKH8EoH4k6NYYtkAMavjP.dry', 'Test Normal', 2, 0, '2013-10-08', 'roger.mahler@umu.se', false),
@@ -162,36 +149,29 @@ This is an auto-generated mail from the SEAD Clearing House system.
                    ('test_provider', '$2y$10$/u3RCeK8Q.2s75UsZmvQ4.4TOxvLNKH8EoH4k6NYYtkAMavjP.dry', 'Test Provider', 3, 3, '2013-10-08', 'roger.mahler@umu.se', true),
                    ('phil_admin', '$2y$10$/u3RCeK8Q.2s75UsZmvQ4.4TOxvLNKH8EoH4k6NYYtkAMavjP.dry', 'Phil Buckland', 3, 3, '2013-10-08', 'phil.buckland@umu.se', true),
                    ('mattias_admin', '$2y$10$/u3RCeK8Q.2s75UsZmvQ4.4TOxvLNKH8EoH4k6NYYtkAMavjP.dry', 'Mattias Sjölander', 3, 3, '2013-10-08', 'mattias.sjolander@umu.se', true);
-
     End If;
 
-    If (Select Count(*) From clearing_house.tbl_clearinghouse_submission_tables) = 0 Then
+    with sead_tables as (
+        Select distinct table_name
+        From clearing_house.fn_dba_get_sead_public_db_schema('public', 'sead_master')
+    )
+		insert into clearing_house.tbl_clearinghouse_submission_tables (table_name, table_name_underscored)
+			select replace(initcap(replace(table_name, '_', ' ')), ' ', '') , table_name
+			from sead_tables
+			where table_name Like 'tbl_%'
+        on conflict (table_name) do nothing;
 
-		Insert Into clearing_house.tbl_clearinghouse_submission_tables (table_name, table_name_underscored)
-			Select replace(initcap(replace(s.table_name, '_', ' ')), ' ', '') , s.table_name
-			From (
-				Select distinct table_name
-				From clearing_house.fn_dba_get_sead_public_db_schema('public', 'sead_master')
-			) As s
-			Left Join clearing_house.tbl_clearinghouse_submission_tables t
-			  On t.table_name_underscored = s.table_name
-			Where t.table_id is NULL
-			  And s.table_name Like 'tbl_%';
-
-	End If;
-
-    If (Select Count(*) From clearing_house.tbl_clearinghouse_submission_states) = 0 Then
-
-        Insert Into clearing_house.tbl_clearinghouse_submission_states (submission_state_id, submission_state_name)
-            Values	(0, 'Undefined'),
-                    (1, 'New'),
-                    (2, 'Pending'),
-                    (3, 'In progress'),
-                    (4, 'Accepted'),
-                    (5, 'Rejected'),
-                    (9, 'Error');
-
-    End If;
+    insert into clearing_house.tbl_clearinghouse_submission_states (submission_state_id, submission_state_name)
+        values	(0, 'Undefined'),
+                (1, 'New'),
+                (2, 'Pending'),
+                (3, 'In progress'),
+                (4, 'Accepted'),
+                (5, 'Rejected'),
+                (9, 'Error')
+        on conflict (submission_state_id)
+            do update
+                set submission_state_name = excluded.submission_state_name;
 
     If (Select Count(*) From clearing_house.tbl_clearinghouse_reject_entity_types) = 0 Then
 
@@ -225,33 +205,27 @@ This is an auto-generated mail from the SEAD Clearing House system.
 
     End If;
 
-    If (Select Count(*) From clearing_house.tbl_clearinghouse_reports) = 0 Then
+    insert into clearing_house.tbl_clearinghouse_reports (report_id, report_name, report_procedure)
+        values  ( 1, 'Locations', 'Select * From clearing_house.fn_clearinghouse_report_locations(?)'),
+                ( 2, 'Bibliography entries', 'Select * From clearing_house.fn_clearinghouse_report_bibliographic_entries(?)'),
+                ( 3, 'Data sets', 'Select * From clearing_house.fn_clearinghouse_report_datasets(?)'),
+                ( 4, 'Ecological reference data - Taxonomic order', 'Select * From clearing_house.fn_clearinghouse_report_taxonomic_order(?)'),
+                ( 5, 'Taxonomic tree (master)', 'Select * From clearing_house.fn_clearinghouse_report_taxa_tree_master(?)'),
+                ( 6, 'Ecological reference data - Taxonomic tree (other)', 'Select * From clearing_house.fn_clearinghouse_report_taxa_other_lists(?)'),
+                ( 7, 'Ecological reference data - Taxonomic RGB codes', 'Select * From clearing_house.fn_clearinghouse_report_taxa_rdb(?)'),
+                ( 8, 'Ecological reference data - Taxonomic eco-codes', 'Select * From clearing_house.fn_clearinghouse_report_taxa_ecocodes(?)'),
+                ( 9, 'Ecological reference data - Taxonomic seasonanlity', 'Select * From clearing_house.fn_clearinghouse_report_taxa_seasonality(?)'),
+                (11, 'Relative ages', 'Select * From clearing_house.fn_clearinghouse_report_relative_ages(?)'),
+                (12, 'Methods', 'Select * From clearing_house.fn_clearinghouse_report_methods(?)'),
+                (13, 'Feature types', 'Select * From clearing_house.fn_clearinghouse_report_feature_types(?)'),
+                (14, 'Sample group descriptions', 'Select * From clearing_house.fn_clearinghouse_report_sample_group_descriptions(?)'),
+                (15, 'Sample group dimensions', 'Select * From clearing_house.fn_clearinghouse_report_sample_group_dimensions(?)'),
+                (16, 'Sample dimensions', 'Select * From clearing_house.fn_clearinghouse_report_sample_dimensions(?)'),
+                (17, 'Sample descriptions', 'Select * From clearing_house.fn_clearinghouse_report_sample_descriptions(?)'),
+                (18, 'Ceramic values', 'Select * From clearing_house.fn_clearinghouse_review_ceramic_values_crosstab(?)')
+    on conflict (report_id)
+        do update
+            set report_name = excluded.report_name,
+                report_procedure = excluded.report_procedure;
 
-        Insert Into clearing_house.tbl_clearinghouse_reports (report_id, report_name, report_procedure)
-            Values  ( 1, 'Locations', 'Select * From clearing_house.fn_clearinghouse_report_locations(?)'),
-                    ( 2, 'Bibliography entries', 'Select * From clearing_house.fn_clearinghouse_report_bibliographic_entries(?)'),
-                    ( 3, 'Data sets', 'Select * From clearing_house.fn_clearinghouse_report_datasets(?)'),
-                    ( 4, 'Ecological reference data - Taxonomic order', 'Select * From clearing_house.fn_clearinghouse_report_taxonomic_order(?)'),
-                    ( 5, 'Taxonomic tree (master)', 'Select * From clearing_house.fn_clearinghouse_report_taxa_tree_master(?)'),
-                    ( 6, 'Ecological reference data - Taxonomic tree (other)', 'Select * From clearing_house.fn_clearinghouse_report_taxa_other_lists(?)'),
-                    ( 7, 'Ecological reference data - Taxonomic RGB codes', 'Select * From clearing_house.fn_clearinghouse_report_taxa_rdb(?)'),
-                    ( 8, 'Ecological reference data - Taxonomic eco-codes', 'Select * From clearing_house.fn_clearinghouse_report_taxa_ecocodes(?)'),
-                    ( 9, 'Ecological reference data - Taxonomic seasonanlity', 'Select * From clearing_house.fn_clearinghouse_report_taxa_seasonality(?)'),
-
-                    -- (10, '*Ecological reference data - Taxonomic species description', 'Select * From clearing_house.fn_dummy_data_list_procedure(?)'),
-
-                    (11, 'Relative ages', 'Select * From clearing_house.fn_clearinghouse_report_relative_ages(?)'),
-                    (12, 'Methods', 'Select * From clearing_house.fn_clearinghouse_report_methods(?)'),
-
-                    (13, 'Feature types', 'Select * From clearing_house.fn_clearinghouse_report_feature_types(?)'),
-
-                    (14, 'Sample group descriptions', 'Select * From clearing_house.fn_clearinghouse_report_sample_group_descriptions(?)'),
-                    (15, 'Sample group dimensions', 'Select * From clearing_house.fn_clearinghouse_report_sample_group_dimensions(?)'),
-
-                    (16, 'Sample dimensions', 'Select * From clearing_house.fn_clearinghouse_report_sample_dimensions(?)'),
-                    (17, 'Sample descriptions', 'Select * From clearing_house.fn_clearinghouse_report_sample_descriptions(?)'),
-
-                    (18, 'Ceramic values', 'Select * From clearing_house.fn_clearinghouse_review_ceramic_values_crosstab(?)');
-    End If;
-
-End $$ Language plpgsql;
+end $$ language plpgsql;

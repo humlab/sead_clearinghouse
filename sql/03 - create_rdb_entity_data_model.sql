@@ -1,4 +1,23 @@
 /*****************************************************************************************************************************
+**	Type	clearing_house.transport_type
+******************************************************************************************************************************/
+
+do $$
+begin
+    if not exists (
+        select 1
+        from pg_type
+        join pg_namespace
+          on pg_type.typnamespace = pg_namespace.oid
+        where typname = 'transport_type'
+          and nspname = 'clearing_house'
+    ) then
+        create domain clearing_house.transport_type char
+            check (value is null or value in ('C', 'U', 'D')) default null null;
+    end if;
+end $$ language plpgsql;
+
+/*****************************************************************************************************************************
 **	Function	fn_rdb_schema_script_table
 **	Who			Roger Mähler
 **	When		2013-10-17
