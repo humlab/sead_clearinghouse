@@ -9,74 +9,35 @@ These instructions will get you a copy of the project up and running on your loc
 ### Prerequisites
 
 What things you need to install the software and how to install them
-
 ```
-Give examples
+- Docker
 ```
-
 ### Installing
 
+#### Setup development environment
 Clone the project from source.
 ```
 $ git clone https://github.com/humlab/sead_clearinghouse.git
 ```
-Setup the clearinghouse database
+
+#### Setup the clearinghouse database
+Follow instructions in `sql/README`. `npm run build:clean-db` does a clean indtall.
+
+#### Build Web Application
+Compile and bundle the entire web application:
 ```
-$ export SEAD_CH_USER=clearinghouse_worker
-$ export SEAD_CH_PASSWORD=****
-$ cd sql
-$ ./install_clearinghouse_database.bash --dbhost=hostname --dbname=target-database
+npm run build:release
 ```
-Compile application
-```
-$ npm run build:release
-
-```
-End with an example of getting some data out of the system or using it for a little demo
-
-## Running the tests
-
-Explain how to run the automated tests for this system
-
-### Break down into end to end tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
-
-### And coding style tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
+Bundled deployment files are stored in `./dist` if build succeeds.
 
 ## Deployment
 
-Add additional notes about how to deploy this on a live system
+1. Copy `./dist` folder to target server.
+2. Run `start_clearinghouse.bash --build`
 
 ## Built With
 
-* [Dropwizard](http://www.dropwizard.io/1.0.2/docs/) - The web framework used
-* [Maven](https://maven.apache.org/) - Dependency Management
-* [ROME](https://rometools.github.io/rome/) - Used to generate RSS Feeds
-
-## Contributing
-
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests to us.
-
-## Versioning
-
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/your/project/tags).
-
 ## Authors
-
-* **Billie Thompson** - *Initial work* - [PurpleBooth](https://github.com/PurpleBooth)
-
-See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
 
 ## License
 
@@ -87,4 +48,3 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 * Hat tip to anyone whose code was used
 * Inspiration
 * etc
-

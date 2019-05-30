@@ -1,6 +1,6 @@
 #!/bin/bash
 
-APP_NAME=clearinghouse_app
+APP_NAME=sead_clearinghouse
 APP_PORT=8060
 APP_BUILD=NO
 DOCKER_FILE=docker/Dockerfile

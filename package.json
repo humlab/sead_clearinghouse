@@ -20,9 +20,9 @@
     "build:dev": "npm run copy:clean && npx webpack --mode development --config webpack.config.js --no-color",
     "build:release": "npm run copy:clean && npx webpack --mode production --config webpack.config.js --no-color && npm run dist:build",
 
-    "build:clean-db": "cd sql && bash '06 - run_all_scripts.bash'",
+    "build:clean-db": "cd sql && bash 'install_clearinghouse_database.bash'",
 
-    "dist:build": "npm run dist:setup && npm run dist:copy && npm run dist:zip && npm run dist:",
+    "dist:build": "npm run dist:setup && npm run dist:copy && npm run dist:zip && npm run dist:rm",
       "dist:setup": "mkdirp dist && rimraf dist/* && mkdirp dist/conf",
       "dist:copy": "cpr public dist/public && cpr docker dist/docker && cp conf/*.php dist/conf/ && cp docker/*.bash dist/",
       "dist:zip": "cd dist && bestzip bundle.zip public docker conf && cd ..",
