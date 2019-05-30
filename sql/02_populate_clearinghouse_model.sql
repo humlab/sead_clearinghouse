@@ -1,5 +1,5 @@
 /*********************************************************************************************************************************
-**  Function    fn_dba_populate_clearing_house_db_model
+**  Function    populate_clearinghouse_model
 **  When        2017-11-06
 **  What        Adds data to DB clearing_house specific schema objects
 **  Who         Roger Mähler
@@ -9,7 +9,7 @@
 **  Revisions
 **********************************************************************************************************************************/
 -- Select clearing_house.fn_dba_populate_clearing_house_db_model();
-Create Or Replace Function clearing_house.fn_dba_populate_clearing_house_db_model() Returns void As $$
+Create Or Replace procedure clearing_house.populate_clearinghouse_model() As $$
 Begin
 
     If (Select Count(*) From clearing_house.tbl_clearinghouse_settings) = 0 Then
@@ -24,7 +24,6 @@ Begin
                 ('mailer', 'smtp-auth', 'false', 'bool'),
                 ('mailer', 'smtp-username', '', 'string'),
                 ('mailer', 'smtp-password', '', 'string'),
-
                 ('signal-templates', 'reject-subject', 'SEAD Clearing House: submission has been rejected', 'string'),
                 ('signal-templates', 'reject-body',
 '
@@ -51,7 +50,6 @@ Note:  #ERROR-DESCRIPTION#
 ', 'string'),
 
                 ('signal-templates', 'accept-subject', 'SEAD Clearing House: submission has been accepted', 'string'),
-
                 ('signal-templates', 'accept-body',
 '
 
@@ -62,7 +60,6 @@ This is an auto-generated mail from the SEAD Clearing House system
 ', 'string'),
 
                 ('signal-templates', 'reclaim-subject', 'SEAD Clearing House notfication: Submission #SUBMISSION-ID# has been transfered to pending', 'string'),
-
                 ('signal-templates', 'reclaim-body', '
 
 Status of submission #SUBMISSION-ID# has been reset to pending due to inactivity.
@@ -73,9 +70,7 @@ was claimed for review, and if no activity during has been registered during las
 This is an auto-generated mail from the SEAD Clearing House system.
 
 ', 'string'),
-
                 ('signal-templates', 'reminder-subject', 'SEAD Clearing House reminder: Submission #SUBMISSION-ID#', 'string'),
-
                 ('signal-templates', 'reminder-body', '
 
 Status of submission #SUBMISSION-ID# has been reset to pending due to inactivity.
@@ -86,12 +81,9 @@ was claimed for review.
 This is an auto-generated mail from the SEAD Clearing House system.
 
 ', 'string'),
-
                 ('reminder', 'days_until_first_reminder', '14', 'numeric'),
                 ('reminder', 'days_since_claimed_until_transfer_back_to_pending', '28', 'numeric'),
                 ('reminder', 'days_without_activity_until_transfer_back_to_pending', '14', 'numeric');
-
-
     End If;
 
     insert into clearing_house.tbl_clearinghouse_info_references (info_reference_type, display_name, href)
@@ -141,25 +133,23 @@ This is an auto-generated mail from the SEAD Clearing House system.
             do update
                 set role_name = excluded.role_name;
 
-    If (Select Count(*) From clearing_house.tbl_clearinghouse_users) = 0 Then
-        Insert Into clearing_house.tbl_clearinghouse_users (user_name, password, full_name, role_id, data_provider_grade_id, create_date, email, signal_receiver)
-            Values ('test_reader', '$2y$10$/u3RCeK8Q.2s75UsZmvQ4.4TOxvLNKH8EoH4k6NYYtkAMavjP.dry', 'Test Reader', 1, 0, '2013-10-08', 'roger.mahler@umu.se', false),
-                   ('test_normal', '$2y$10$/u3RCeK8Q.2s75UsZmvQ4.4TOxvLNKH8EoH4k6NYYtkAMavjP.dry', 'Test Normal', 2, 0, '2013-10-08', 'roger.mahler@umu.se', false),
-                   ('test_admin', '$2y$10$/u3RCeK8Q.2s75UsZmvQ4.4TOxvLNKH8EoH4k6NYYtkAMavjP.dry', 'Test Administrator', 3, 0, '2013-10-08', 'roger.mahler@umu.se', true),
-                   ('test_provider', '$2y$10$/u3RCeK8Q.2s75UsZmvQ4.4TOxvLNKH8EoH4k6NYYtkAMavjP.dry', 'Test Provider', 3, 3, '2013-10-08', 'roger.mahler@umu.se', true),
-                   ('phil_admin', '$2y$10$/u3RCeK8Q.2s75UsZmvQ4.4TOxvLNKH8EoH4k6NYYtkAMavjP.dry', 'Phil Buckland', 3, 3, '2013-10-08', 'phil.buckland@umu.se', true),
-                   ('mattias_admin', '$2y$10$/u3RCeK8Q.2s75UsZmvQ4.4TOxvLNKH8EoH4k6NYYtkAMavjP.dry', 'Mattias Sjölander', 3, 3, '2013-10-08', 'mattias.sjolander@umu.se', true);
-    End If;
+    Insert Into clearing_house.tbl_clearinghouse_users (user_name, password, full_name, role_id, data_provider_grade_id, create_date, email, signal_receiver)
+        Values ('test_reader', '$2y$10$/u3RCeK8Q.2s75UsZmvQ4.4TOxvLNKH8EoH4k6NYYtkAMavjP.dry', 'Test Reader', 1, 0, '2013-10-08', 'roger.mahler@umu.se', false),
+                ('test_normal', '$2y$10$/u3RCeK8Q.2s75UsZmvQ4.4TOxvLNKH8EoH4k6NYYtkAMavjP.dry', 'Test Normal', 2, 0, '2013-10-08', 'roger.mahler@umu.se', false),
+                ('test_admin', '$2y$10$/u3RCeK8Q.2s75UsZmvQ4.4TOxvLNKH8EoH4k6NYYtkAMavjP.dry', 'Test Administrator', 3, 0, '2013-10-08', 'roger.mahler@umu.se', true),
+                ('test_provider', '$2y$10$/u3RCeK8Q.2s75UsZmvQ4.4TOxvLNKH8EoH4k6NYYtkAMavjP.dry', 'Test Provider', 3, 3, '2013-10-08', 'roger.mahler@umu.se', true),
+                ('phil_admin', '$2y$10$/u3RCeK8Q.2s75UsZmvQ4.4TOxvLNKH8EoH4k6NYYtkAMavjP.dry', 'Phil Buckland', 3, 3, '2013-10-08', 'phil.buckland@umu.se', true),
+                ('mattias_admin', '$2y$10$/u3RCeK8Q.2s75UsZmvQ4.4TOxvLNKH8EoH4k6NYYtkAMavjP.dry', 'Mattias Sjölander', 3, 3, '2013-10-08', 'mattias.sjolander@umu.se', true)
+        on conflict do nothing;
 
     with sead_tables as (
         Select distinct table_name
         From clearing_house.fn_dba_get_sead_public_db_schema('public', 'sead_master')
-    )
-		insert into clearing_house.tbl_clearinghouse_submission_tables (table_name, table_name_underscored)
-			select replace(initcap(replace(table_name, '_', ' ')), ' ', '') , table_name
-			from sead_tables
-			where table_name Like 'tbl_%'
-        on conflict (table_name) do nothing;
+    ) insert into clearing_house.tbl_clearinghouse_submission_tables (table_name, table_name_underscored)
+        select replace(initcap(replace(table_name, '_', ' ')), ' ', '') , table_name
+        from sead_tables
+        where table_name Like 'tbl_%'
+      on conflict (table_name) do nothing;
 
     insert into clearing_house.tbl_clearinghouse_submission_states (submission_state_id, submission_state_name)
         values	(0, 'Undefined'),
@@ -169,13 +159,10 @@ This is an auto-generated mail from the SEAD Clearing House system.
                 (4, 'Accepted'),
                 (5, 'Rejected'),
                 (9, 'Error')
-        on conflict (submission_state_id)
-            do update
-                set submission_state_name = excluded.submission_state_name;
+        on conflict do nothing;
 
     If (Select Count(*) From clearing_house.tbl_clearinghouse_reject_entity_types) = 0 Then
 
-		--Delete From clearing_house.tbl_clearinghouse_reject_entity_types
         Insert Into clearing_house.tbl_clearinghouse_reject_entity_types (entity_type_id, table_id, entity_type)
 
             Select 0,  0, 'Not specified'
@@ -194,7 +181,6 @@ This is an auto-generated mail from the SEAD Clearing House system.
 			  On x.table_id = t.table_id
             Where x.table_id Is Null
             Order by 1;
-
 
         /* Fixa beskrivningstext */
         Update clearing_house.tbl_clearinghouse_reject_entity_types as x

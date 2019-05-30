@@ -4,7 +4,10 @@ set -e  # Exit script on any error
 
 #EXPORT PGOPTIONS='--client-min-messages=warning'
 
-dbhost=$(head -n 1 ~/vault/.default.sead.server)
+if [ -f ~/vault/.default.sead.server ]; then
+    dbhost=$(head -n 1 ~/vault/.default.sead.server)
+fi
+
 dbuser=clearinghouse_worker
 dbport=5432
 dbname=sead_staging_20190521071657
@@ -27,6 +30,26 @@ for i in "$@"; do
     esac
 done
 
+function usage() {
+    echo "usage: install_clearinghouse_database.bash [--dbhost=target-server] [--port=port] [--dbname=target-database] [--on-schema-exists=abort|drop|update]"
+    exit 64
+}
+
+function check_setup() {
+
+    if [ "$dbuser" != "clearinghouse_worker" ]; then
+        echo "FATAL: clearinghouse DB must be initialized by user clearinghouse_worker." >&2
+        exit 64
+    fi
+    if [ "$dbhost" == "" ] || [ "$dbname" == "" ]; then
+        usage
+    fi
+    if [ "$on_schema_exists" != "abort" ] && [ "$on_schema_exists" != "drop" ] && [ "$on_schema_exists" != "update" ] ; then
+        usage
+    fi
+    echo "Deploying SEAD Clearinghouse as $dbuser@$dbhost:$dbport/$dbname"
+}
+
 function dbexec() {
     database=$1
     username=$2
@@ -43,7 +66,7 @@ function dbexec() {
 function drop_schema() {
     echo "Dropping schema..."
     sql="drop schema if exists clearing_house cascade;"
-    dbexec "$dbname" "clearinghouse_worker" "$sql"
+    dbexec "$dbname" "clearinghouse_worker" "$sql"  > /dev/null 2>&1
 }
 
 function create_schema() {
@@ -52,89 +75,98 @@ function create_schema() {
     dbexec "$dbname" "clearinghouse_worker" "$sql"
 }
 
-echo "Deploying SEAD Clearinghouse on \"${dbhost}\" database \"${dbname}\"..."
-echo "Using settings --host=$dbhost --port=$dbport --username=$dbuser --dbname=$dbname --on-schema-exists=$on_schema_exists"
-echo "Note: user clearinghouse_worker must exist on target server"
+function set_permissions() {
+    echo "Setting worker permissions..."
+    psql --host=$dbhost --port=$dbport --username=humlab_admin --dbname=$dbname --no-password -q -X -1 -v ON_ERROR_STOP=1 <<EOF
+        alter user clearinghouse_worker createdb;
+        grant all privileges on database $dbname to clearinghouse_worker;
+        grant connect on database $dbname to clearinghouse_worker;
+EOF
+}
 
-if [ "$dbuser" != "clearinghouse_worker" ]; then
-    echo "FATAL: clearinghouse DB must be initialized by user clearinghouse_worker." >&2
-    exit 64
-fi
+function assign_privileges() {
+    psql --host=$dbhost --port=$dbport --username=humlab_admin --dbname=$dbname --no-password -q -X -1 -v ON_ERROR_STOP=1 <<EOF
 
-echo "Setting worker permissions..."
-psql --host=$dbhost --port=$dbport --username=humlab_admin --dbname=$dbname --no-password -q -X -1 -v ON_ERROR_STOP=1 <<EOF
+        grant usage on schema public, sead_utility to clearinghouse_worker;
+        grant all privileges on all tables in schema public, sead_utility to clearinghouse_worker;
+        grant all privileges on all sequences in schema public, sead_utility to clearinghouse_worker;
+        grant execute on all functions in schema public, sead_utility to clearinghouse_worker;
 
-    alter user clearinghouse_worker createdb;
-    grant all privileges on database $dbname to clearinghouse_worker;
-    grant connect on database $dbname to clearinghouse_worker;
+        alter default privileges in schema public, sead_utility
+        grant all privileges on tables to clearinghouse_worker;
+        alter default privileges in schema public, sead_utility
+        grant all privileges on sequences to clearinghouse_worker;
 
 EOF
+}
 
-sql="select exists(select from information_schema.schemata where schema_name = 'clearing_house')"
-schema_exists=$( psql --host=$dbhost --username=$dbuser --no-password --dbname=$dbname -tAc "$sql" )
-if [ "$schema_exists" = 't' ]
-then
-    if [ "$on_schema_exists" == "drop" ]; then
-        drop_schema
-        create_schema
-    elif [ "$on_schema_exists" == "update" ]; then
-        echo "Action: Update of existing database requested"
+function setup_schema() {
+    echo "Initializing schema..."
+    sql="select exists(select from information_schema.schemata where schema_name = 'clearing_house')"
+    schema_exists=$( psql --host=$dbhost --username=$dbuser --no-password --dbname=$dbname -tAc "$sql" )
+    if [ "$schema_exists" = 't' ]
+    then
+        if [ "$on_schema_exists" == "drop" ]; then
+            drop_schema
+            create_schema
+        elif [ "$on_schema_exists" == "update" ]; then
+            echo "Action: Update of existing database requested"
+        else
+            echo "FATAL: Schema exists, use --on-schema-exists=[drop|update] to resolve conflict"
+            exit 64
+        fi
     else
-        echo "FATAL: Schema exists, use --on-schema-exists=[drop|update] to resolve conflict"
-        exit 64
+        create_schema
     fi
-else
-    create_schema
-fi
+}
 
-psql --host=$dbhost --port=$dbport --username=$dbuser --dbname=$dbname --no-password -q -X -1 -v ON_ERROR_STOP=1 <<EOF
+function install_scripts() {
+    echo "Setting worker permissions..."
+    psql --host=$dbhost --port=$dbport --username=$dbuser --dbname=$dbname --no-password -q -X -1 -v ON_ERROR_STOP=1 <<EOF
 
-    set client_min_messages to warning;
+        set client_min_messages to warning;
 
-    \i '01 - utility_functions.sql'
-    \i '02 - create_clearing_house_data_model.sql'
-    
-    \i '02 - populate_clearing_house_data_model.sql'
-
-    select clearing_house.fn_dba_create_clearing_house_db_model(false);
-    select clearing_house.fn_dba_populate_clearing_house_db_model();
-
-    \i '03 - create_rdb_entity_data_model.sql'
-
-    select clearing_house.fn_create_clearinghouse_public_db_model(false, false);
-
-    \i '04 - explode_submission_xml_to_rdb.sql'
-    \i '05 - client_review_crosstab_ceramic_values.sql'
-    \i '05 - client_review_dataset_data_procedures.sql'
-    \i '05 - client_review_sample_data_procedures.sql'
-    \i '05 - client_review_sample_group_data_procedures.sql'
-    \i '05 - client_review_site_data_procedures.sql'
-    \i '05 - report_procedures.sql'
-
-    grant clearinghouse_worker to mattias;
-
+        \i '01_utility_functions.sql'
+        \i '02_create_clearinghouse_model.sql'
+        \i '02_populate_clearinghouse_model.sql'
+        \i '03_create_public_model.sql'
 EOF
+}
 
-if [ $? -ne 0 ];  then
-    echo "FATAL: psql command failed! Deploy aborted." >&2
-    exit 64
-fi
+function create_model() {
+    echo "Installing schema..."
+    psql --host=$dbhost --port=$dbport --username=$dbuser --dbname=$dbname --no-password -q -1 -v ON_ERROR_STOP=1 <<EOF
 
-psql --host=$dbhost --port=$dbport --username=humlab_admin --dbname=$dbname --no-password -q -X -1 -v ON_ERROR_STOP=1 <<EOF
+        set client_min_messages to warning;
 
-    grant usage on schema public, sead_utility to clearinghouse_worker;
-    grant all privileges on all tables in schema public, sead_utility to clearinghouse_worker;
-    grant all privileges on all sequences in schema public, sead_utility to clearinghouse_worker;
-    grant execute on all functions in schema public, sead_utility to clearinghouse_worker;
+        call clearing_house.create_clearinghouse_model(false);
+        call clearing_house.populate_clearinghouse_model();
+        call clearing_house.create_public_model(false, false);
 
-    alter default privileges in schema public, sead_utility
-    grant all privileges on tables to clearinghouse_worker;
-    alter default privileges in schema public, sead_utility
-    grant all privileges on sequences to clearinghouse_worker;
-
+        \i '04_copy_xml_to_rdb.sql'
 EOF
+}
 
-if [ $? -ne 0 ];  then
-    echo "FATAL: psql command failed! Deploy aborted." >&2
-    exit 64
-fi
+function install_reports() {
+    echo "Installing report procedures..."
+    psql --host=$dbhost --port=$dbport --username=$dbuser --dbname=$dbname --no-password -q -1 -v ON_ERROR_STOP=1 <<EOF
+
+        set client_min_messages to warning;
+
+        \i '05_review_ceramic_values.sql'
+        \i '05_review_dataset.sql'
+        \i '05_review_sample.sql'
+        \i '05_review_sample_group.sql'
+        \i '05_review_site.sql'
+
+        \i '06_report_procedures.sql'
+EOF
+}
+
+check_setup
+set_permissions
+setup_schema
+install_scripts
+create_model
+install_reports
+assign_privileges

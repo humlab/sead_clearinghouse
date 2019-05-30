@@ -447,11 +447,10 @@ End $$ Language plpgsql;
 **	Revisions
 ******************************************************************************************************************************/
 
-Create Or Replace Function clearing_house.fn_create_clearinghouse_public_db_model(
+Create Or Replace Procedure clearing_house.create_public_model(
     p_only_drop BOOLEAN = FALSE,
     p_dry_run BOOLEAN = TRUE
-)
-Returns void As $$
+) As $$
 Begin
 
     Perform clearing_house.fn_create_public_db_entity_tables('clearing_house', p_only_drop, p_dry_run);
@@ -459,10 +458,3 @@ Begin
     Perform clearing_house.fn_create_local_union_public_entity_views('clearing_house', 'clearing_house', p_only_drop, p_dry_run);
 
 End $$ Language plpgsql;
-
--- Create Or Replace Function clearing_house.fn_drop_clearinghouse_public_db_model()
--- Returns void As $$
--- Begin
---     Perform clearing_house.fn_create_local_union_public_entity_views('clearing_house', 'clearing_house', TRUE, FALSE);
---     Perform clearing_house.fn_create_public_db_entity_tables('clearing_house', TRUE);
--- End $$ Language plpgsql;

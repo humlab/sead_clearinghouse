@@ -1,5 +1,5 @@
 /*********************************************************************************************************************************
-**  Function    fn_dba_create_clearing_house_db_model
+**  Function    create_clearinghouse_model
 **  When        2013-10-17
 **  What        Creates DB clearing_house specific schema objects (not entity objects) for Clearing House application
 **  Who         Roger Mähler
@@ -10,7 +10,7 @@
 **********************************************************************************************************************************/
 -- Select clearing_house.fn_dba_create_clearing_house_db_model();
 -- Drop Function If Exists fn_dba_create_clearing_house_db_model(BOOLEAN);
-Create Or Replace Function clearing_house.fn_dba_create_clearing_house_db_model(p_drop_tables BOOLEAN=FALSE) Returns void As $$
+Create Or Replace Procedure clearing_house.create_clearinghouse_model(p_drop_tables BOOLEAN=FALSE) As $$
 
 Begin
 
