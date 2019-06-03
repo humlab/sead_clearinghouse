@@ -32,7 +32,7 @@ namespace InfraStructure {
         public static function readDatabaseConfig()
         {
             // if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-                return require $_SERVER['DOCUMENT_ROOT'] . '/../conf/clearing_house_database_conf.php';
+                return require $_SERVER['DOCUMENT_ROOT'] . '/../conf/credentials.php';
             // }
             // return require_once '/www/conf/clearing_house_database_conf.php';
         }

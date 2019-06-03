@@ -72,15 +72,16 @@ module.exports = {
             'window.$': 'jquery',
             _: "underscore",
             Backbone : "backbone",
-        }),
-        new CopyWebpackPlugin([
-            {
-                from: 'conf/' + target,
-                to: 'zip/conf',
-                toType: 'dir',
-                force: true
-            }
-        ])
+        })
+        // ,
+        // new CopyWebpackPlugin([
+        //     {
+        //         from: 'conf/' + target,
+        //         to: 'zip/conf',
+        //         toType: 'dir',
+        //         force: true
+        //     }
+        // ])
     ],
     resolve: {
         extensions: [ '.json', '.js', '.jsx', '.css' ],
