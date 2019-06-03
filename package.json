@@ -5,29 +5,22 @@
   "main": "public/js/main.js",
   "private": true,
   "scripts": {
-
     "clean:all": "npm cache clean && rimraf -- public/*",
     "clean": "mkdirp public && rimraf public/* && mkdirp public/upload",
     "copy:api": "cpr src/api public/api",
     "copy:vendor": "rimraf -- public/vendor && cpr src/vendor public/vendor",
     "copy:clean": "npm run clean && npm run copy:api && npm run copy:vendor",
-
     "update:autoload": "cd src && composer dump-autoload -o && cd ..",
-
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "npm run copy:clean && npx webpack --config webpack.config.js --mode development --no-color --watch",
-
     "build:dev": "npm run copy:clean && npx webpack --mode development --config webpack.config.js --no-color",
     "build:release": "npm run copy:clean && npx webpack --mode production --config webpack.config.js --no-color && npm run dist:build",
-
     "build:clean-db": "cd sql && bash 'install_clearinghouse_database.bash'",
-
     "dist:build": "npm run dist:setup && npm run dist:copy && npm run dist:zip && npm run dist:rm",
-      "dist:setup": "mkdirp dist && rimraf dist/* && mkdirp dist/conf",
-      "dist:copy": "cpr public dist/public && cpr docker dist/docker && cp conf/*.php dist/conf/ && cp docker/*.bash dist/",
-      "dist:zip": "cd dist && bestzip bundle.zip public docker conf && cd ..",
-      "dist:rm": "rimraf dist/public dist/docker dist/conf"
-
+    "dist:setup": "mkdirp dist && rimraf dist/* && mkdirp dist/conf",
+    "dist:copy": "cpr public dist/public && cpr docker dist/docker && cp conf/*.php dist/conf/ && cp docker/*.bash dist/",
+    "dist:zip": "cd dist && bestzip bundle.zip public docker conf && cd ..",
+    "dist:rm": "rimraf dist/public dist/docker dist/conf"
   },
   "repository": {
     "type": "git",
@@ -45,11 +38,10 @@
   },
   "homepage": "https://github.com/humlab/sead_clearinghouse#readme",
   "devDependencies": {
-    "@babel/core": "^7.0.0-beta.42",
-    "@babel/preset-env": "^7.0.0-beta.42",
     "babel-core": "^6.21.0",
     "babel-eslint": "^8.2.2",
     "babel-loader": "^8.0.0-beta.2",
+    "babel-preset-env": "^1.7.0",
     "babel-preset-es2015": "^6.18.0",
     "bestzip": "^1.1.4",
     "copy-webpack-plugin": "^4.5.1",
