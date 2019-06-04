@@ -49,34 +49,5 @@ var Site_Column_Store = window.Site_Column_Store = {
         ]
     })
 };
-/*
-window.Site_Column_Store = {
 
-    data_type: "site",
-
-    data_keys: ["locations", "references", "natgridrefs", "images" ],
-
-    columns: utils.toArray({
-        locations: [
-            { column_name: "Id", column_field: "local_db_id" },
-            { column_name: "Name", column_field: "location_name", public_column_field: "public_location_name" },
-            { column_name: "Type", column_field: "location_type", public_column_field: "public_location_type" },
-            { column_name: "Lat.dd", column_field: "default_lat_dd" },
-            { column_name: "Long.dd", column_field: "default_long_dd" },
-            { column_name: "Updated", column_field: "date_updated" }
-       ],
-        references: [
-            { column_name: "Id", column_field: "local_db_id" },
-            { column_name: "Reference", column_field: "reference", public_column_field: "public_reference" }
-        ],
-        natgridrefs: [
-            { column_name: "Id", column_field: "local_db_id" },
-            { column_name: "Method", column_field: "method_name", public_column_field: "public_method_name" },
-            { column_name: "Nat.Grid.Ref", column_field: "natgridref", public_column_field: "public_natgridref" }
-        ],
-        images: [
-        ]
-    })
-};
-*/
 export { SiteView, Site_Column_Store };

@@ -151,11 +151,16 @@ var Bootstrap_Panel_Table_Container_Builder = window.Bootstrap_Panel_Table_Conta
         var container_id = data_type + "-" + data_key + "-container";
         var indicator_container_id =  data_type + "_" + data_key + "_generic_indicator_container";
         var table_container_id =  data_type + "_" + data_key + "_table_container";
-
+        var accordion_container_id = data_type + "_accordion_container";
         var $heading = $("<div/>", { class: "card-header" })
             .append($("<span/>", { class: "panel-title" })
                 .append($("<span>", { id: indicator_container_id }))
-                .append($("<a/>", { text: title, class: "accordion-toggle", "data-toggle": "collapse", "data-parent": "#accordion2", href: "#" + collapse_id }))
+                .append($("<a/>", {
+                    text: title,
+                    class: "accordion-toggle",
+                    "data-toggle": "collapse",
+                    "data-parent": "#" + accordion_container_id,
+                    href: "#" + collapse_id }))
                 .append($("<span/>", {
                     class: "badge badge-primary badge.badge-pill float-right " + (count > 0 ? "sead-badge-data-exists" : ""),
                     id: data_type + "_" + data_key + "_badge",
