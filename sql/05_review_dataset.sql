@@ -18,7 +18,7 @@ Returns Table (
 	master_name                     character varying,
 	previous_dataset_name           character varying,
 	method_name                     character varying,
-    project_name                    text,
+    project_name                    character varying,
     project_stage_name              text,
 	record_type_id                  int,
 
@@ -28,7 +28,7 @@ Returns Table (
 	public_master_name              character varying,
 	public_previous_dataset_name    character varying,
 	public_method_name              character varying,
-	public_project_name             text,
+	public_project_name             character varying,
 	public_project_stage_name       text,
 	public_record_type_id           int,
 
