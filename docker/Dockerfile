@@ -23,24 +23,19 @@ RUN apt-get install -y  \
 RUN curl -sL https://deb.nodesource.com/setup_11.x  | bash - && \
     apt-get -y install nodejs
 
-RUN mkdir -p /tmp/deploy /tmp/deploy/public && \
+RUN mkdir -p /tmp/deploy && \
     cd /tmp && \
     git clone https://github.com/humlab/sead_clearinghouse.git && \
     rm -rf ./sead_clearinghouse/src/vendor && \
     cd /tmp/sead_clearinghouse/src && \
     wget -q -O ./composer.phar https://getcomposer.org/composer.phar && \
     php ./composer.phar install && \
-    php ./composer.phar dump-autoload -o
+    php ./composer.phar dump-autoload -o && \
+    mkdir -p /tmp/sead_clearinghouse/src/api/api-cache
 
 RUN cd /tmp/sead_clearinghouse && \
     npm install && \
     npx webpack --mode production --config webpack.config.js --no-color
-
-RUN mkdir -p /tmp/deploy && \
-    cp -r /tmp/sead_clearinghouse/public /tmp/deploy/public && \
-    cp -r /tmp/sead_clearinghouse/src/api /tmp/deploy/public/ && \
-    cp -r /tmp/sead_clearinghouse/src/vendor /tmp/deploy/public/ && \
-    mkdir -p /tmp/deploy/public/api/api-cache
 
 FROM clearinghouse-base
 
@@ -51,11 +46,12 @@ WORKDIR /
 
 RUN mkdir -p /home/clearinghouse/
 
-COPY --from=builder-base /tmp/deploy/* /home/clearinghouse/
+COPY --from=builder-base /tmp/sead_clearinghouse/public /home/clearinghouse/public
+COPY --from=builder-base /tmp/sead_clearinghouse/src/api /home/clearinghouse/public/api
+COPY --from=builder-base /tmp/sead_clearinghouse/src/vendor /home/clearinghouse/public/vendor
 
-RUN groupadd -r clearinghouse_group && \
-    useradd -r -g clearinghouse_group clearinghouse_user && \
-    chown -R clearinghouse_group:clearinghouse_user /home/clearinghouse
+#RUN groupadd -r clearinghouse_group && useradd -r -g clearinghouse_group clearinghouse_user
+#RUN chown -R clearinghouse_user:clearinghouse_group /home/clearinghouse
 
 WORKDIR /home/clearinghouse/public
 
