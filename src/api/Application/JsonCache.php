@@ -7,14 +7,10 @@ namespace Application {
         public $cache_dir = null;
 
         function __construct() {
-            //$this->cache_dir = dirname(__FILE__) . '/../../api-cache';
             $this->cache_dir = './api-cache';
+            if (!file_exists($this->cache_dir))
+                mkdir($this->cache_dir, 0777, true);
         }
-
-        // function getConfig()
-        // {
-        //     return \InfraStructure\ConfigService::getConfig();
-        // }
 
         function getJson($id, $longivity = 2 * 60 * 60 ) {
 
