@@ -23,11 +23,23 @@ RUN apt-get install -y  \
 RUN curl -sL https://deb.nodesource.com/setup_11.x  | bash - && \
     apt-get -y install nodejs
 
+COPY . /tmp
+
+WORKDIR /tmp
+
 RUN mkdir -p /tmp/deploy && \
     cd /tmp && \
-    git clone https://github.com/humlab/sead_clearinghouse.git && \
-    rm -rf ./sead_clearinghouse/src/vendor && \
+    if [ -d ./src ]; then \
+        echo "Building from source in context" && \
+        mkdir -p /sead_clearinghouse ; \
+        mv * /sead_clearinghouse ; \
+        mv /sead_clearinghouse /tmp; \
+    else \
+        echo "Building from source in Github repository" ; \
+        git clone https://github.com/humlab/sead_clearinghouse.git ; \
+    fi && \
     cd /tmp/sead_clearinghouse/src && \
+    rm -rf ./vendor && \
     wget -q -O ./composer.phar https://getcomposer.org/composer.phar && \
     php ./composer.phar install && \
     php ./composer.phar dump-autoload -o && \

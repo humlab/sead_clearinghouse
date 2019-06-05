@@ -1,0 +1,16 @@
+.vscode
+.vs
+*.log
+*.output
+*.zip
+*.7z
+/archive
+/dist
+/import
+/node_modules
+/public
+/sql
+/Tests
+.svn
+.git
+/src/vendor
