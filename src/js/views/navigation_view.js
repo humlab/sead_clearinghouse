@@ -236,17 +236,20 @@ var TreeNodeHelper = {
 
     assignToggler: function(context)
     {
-        $('.tree li:has(ul)', context).addClass('parent_li').find(' > span').attr('title', 'Collapse this branch');
+        //$('.collapse').on('shown.bs.collapse, hidden.bs.collapse', function () {
+        //    $(this).parent().prev('button').find('span').toggleClass('glyphicon-plus glyphicon-minus');
+        //});
 
+        $('.tree li:has(ul)', context).addClass('parent_li').find(' > span').attr('title', 'Collapse this branch');
         $('.tree li.parent_li > span', context).on('click', function (e) {
             var $self = $(this);
             var children = $self.parent('li.parent_li').find(' > ul'); // > li');
             if (children.is(":visible")) {
                 children.hide(0); //'fast');
-                $self.attr('title', 'Expand this branch').find(' > i').addClass('glyphicon-plus-sign').removeClass('glyphicon-minus-sign');
+                $self.attr('title', 'Expand this branch').find(' > i').addClass('glyphicon-plus').removeClass('glyphicon-minus');
             } else {
                 children.show(0); // ('fast');
-                $self.attr('title', 'Collapse this branch').find(' > i').addClass('glyphicon-minus-sign').removeClass('glyphicon-plus-sign');
+                $self.attr('title', 'Collapse this branch').find(' > i').addClass('glyphicon-minus').removeClass('glyphicon-plus');
             }
             e.stopPropagation();
         });
