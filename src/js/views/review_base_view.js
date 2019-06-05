@@ -56,7 +56,7 @@ var ReviewBaseView = window.ReviewBaseView = window.ReviewView.extend({
 
             var $panel = Bootstrap_Panel_Table_Container_Builder.build(store.data_type, table_options[key].data_key, table_options[key].data_key.pascalCase().pascalCaseToWords(), (data.data || data).length);
 
-            $("#" + store.data_type + "_accordion", this.$el).append($panel);
+            $("#" + store.data_type + "_accordion_container", this.$el).append($panel);
 
             var view = new ReviewTableView($.extend(table_options[key].options, { rejects: this.rejects, data: data }));
 
