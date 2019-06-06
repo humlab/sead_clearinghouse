@@ -25,9 +25,16 @@ var Site_Column_Store = window.Site_Column_Store = {
 
     data_type: "site",
 
-    data_keys: ["locations", "references", "natgridrefs", "images" ],
+    data_keys: [ "projects", "locations", "references", "natgridrefs", "images" ],
 
     columns: utils.toArray({
+        projects: [
+            { column_name: "Id", column_field: "local_db_id" },
+            { column_name: "Name", column_field: "project_name", public_column_field: "public_project_name" },
+            { column_name: "Abbrev", column_field: "project_abbrev", public_column_field: "public_project_abbrev" },
+            { column_name: "Type", column_field: "project_type", public_column_field: "public_project_type" },
+            { column_name: "Description", column_field: "description", public_column_field: "public_description" }
+        ],
         locations: [
             { column_name: "Id", column_field: "local_db_id" },
             { column_name: "Name", column_field: "location_name", public_column_field: "public_location_name" },
