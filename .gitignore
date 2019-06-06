@@ -18,3 +18,4 @@ __pycache__/
 *.pyperf
 vendor/
 .docker-env
+docker-compose.yml
