@@ -2,7 +2,7 @@
 const path = require('path');
 const webpack = require('webpack');
 const HtmlPlugin = require("html-webpack-plugin");
-const CopyWebpackPlugin = require('copy-webpack-plugin');
+const copyPlugin = require('copy-webpack-plugin');
 
 const target = "dev";
 
@@ -72,7 +72,14 @@ module.exports = {
             'window.$': 'jquery',
             _: "underscore",
             Backbone : "backbone",
-        })
+        }),
+        new copyPlugin([
+            {
+                from: __dirname + '/src/api',
+                to: __dirname + '/public/api',
+                force: true,
+            },
+        ]),
         // ,
         // new CopyWebpackPlugin([
         //     {

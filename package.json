@@ -7,9 +7,10 @@
   "scripts": {
     "clean:all": "npm cache clean && rimraf -- public/*",
     "clean": "mkdirp public && rimraf public/* && mkdirp public/upload",
-    "copy:api": "cpr src/api public/api",
+    "copy:api:deprecated": "rimraf -- public/api && cpr src/api public/api",
     "copy:vendor": "rimraf -- public/vendor && cpr src/vendor public/vendor",
-    "copy:clean": "npm run clean && npm run copy:api && npm run copy:vendor",
+    "copy:clean:deprecated": "npm run clean && npm run copy:api && npm run copy:vendor",
+    "copy:clean": "npm run clean && npm run copy:vendor",
     "update:autoload": "cd src && composer dump-autoload -o && cd ..",
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "npm run copy:clean && npx webpack --config webpack.config.js --mode development --no-color --watch",
