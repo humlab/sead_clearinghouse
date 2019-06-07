@@ -9,6 +9,8 @@
     "clean": "mkdirp public && rimraf public/* && mkdirp public/upload",
     "copy:api:deprecated": "rimraf -- public/api && cpr src/api public/api",
     "copy:vendor": "rimraf -- public/vendor && cpr src/vendor public/vendor",
+    "composer:fetch": "npx curl -q --output ./src/composer.phar https://getcomposer.org/composer.phar",
+    "composer:install": "cd src && npm run composer:fetch && npx php ./composer.phar install && cd ..",
     "copy:clean:deprecated": "npm run clean && npm run copy:api && npm run copy:vendor",
     "copy:clean": "npm run clean && npm run copy:vendor",
     "update:autoload": "cd src && composer dump-autoload -o && cd ..",

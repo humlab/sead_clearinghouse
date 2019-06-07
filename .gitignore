@@ -4,6 +4,7 @@ archive/
 *.output
 *.zip
 *.7z
+*.phar
 public/
 dist/
 .svn/
