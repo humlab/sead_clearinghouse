@@ -40,8 +40,8 @@ var Sample_Column_Store = window.Sample_Column_Store = {
         ],
         notes: [
             { column_name: "Id", column_field: "local_db_id" },
-            { column_name: "Note Type", column_field: "note_type", public_column_field: "note_type" },
-            { column_name: "Note", column_field: "note", public_column_field: "note" },
+            { column_name: "Note Type", column_field: "note_type", public_column_field: "public_note_type" },
+            { column_name: "Note", column_field: "note", public_column_field: "public_note" },
             { column_name: "Updated", column_field: "date_updated" }
         ],
         dimensions: [
@@ -84,6 +84,11 @@ var Sample_Column_Store = window.Sample_Column_Store = {
             { column_name: "Location", column_field: "location", public_column_field: "public_location" },
             { column_name: "Type", column_field: "location_type", public_column_field: "public_location_type" },
             { column_name: "Description", column_field: "description", public_column_field: "public_description" },
+            { column_name: "Updated", column_field: "date_updated" }
+        ],
+        dendro_date_notes: [
+            { column_name: "Id", column_field: "local_db_id" },
+            { column_name: "Note", column_field: "note", public_column_field: "public_note" },
             { column_name: "Updated", column_field: "date_updated" }
         ]
     })
