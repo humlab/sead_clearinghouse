@@ -11,6 +11,12 @@
             "program": "${file}"
         },
         {
+            "name": "PHP: Current File",
+            "type": "php",
+            "request": "launch",
+            "program": "${file}"
+        },
+        {
             "name": "Attach (Remote Debug)",
             "type":"php",
             "request": "launch",
