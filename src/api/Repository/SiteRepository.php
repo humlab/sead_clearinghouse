@@ -17,11 +17,11 @@ namespace Repository {
         function getSiteModel($submission_id, $site_id)
         {
 
-            $site = $this->getAdapter()->execute_procedure("clearing_house.fn_clearinghouse_review_site_client_data", array($submission_id, $site_id), \InfraStructure\DatabaseConnection::Execute_GetFirst);
-            $locations = $this->getAdapter()->execute_procedure("clearing_house.fn_clearinghouse_review_site_locations_client_data", array($submission_id, $site_id));
-            $references = $this->getAdapter()->execute_procedure("clearing_house.fn_clearinghouse_review_site_references_client_data", array($submission_id, $site_id));
-            $natgridrefs = $this->getAdapter()->execute_procedure("clearing_house.fn_clearinghouse_review_site_natgridrefs_client_data", array($submission_id, $site_id));
-            $projects = $this->getAdapter()->execute_procedure("clearing_house.fn_clearinghouse_review_projects_client_data", array($submission_id, $site_id));
+            $site = $this->getAdapter()->execute_procedure("clearing_house.fn_clearinghouse_review_site", array($submission_id, $site_id), \InfraStructure\DatabaseConnection::Execute_GetFirst);
+            $locations = $this->getAdapter()->execute_procedure("clearing_house.fn_clearinghouse_review_site_locations", array($submission_id, $site_id));
+            $references = $this->getAdapter()->execute_procedure("clearing_house.fn_clearinghouse_review_site_references", array($submission_id, $site_id));
+            $natgridrefs = $this->getAdapter()->execute_procedure("clearing_house.fn_clearinghouse_review_site_natgridrefs", array($submission_id, $site_id));
+            $projects = $this->getAdapter()->execute_procedure("clearing_house.fn_clearinghouse_review_site_projects", array($submission_id, $site_id));
             $images = $this->notImplemented();
 
             return array(

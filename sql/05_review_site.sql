@@ -1,5 +1,5 @@
 /*****************************************************************************************************************************
-**	Function	fn_clearinghouse_review_site_client_data
+**	Function	fn_clearinghouse_review_site
 **	Who			Roger Mähler
 **	When		2013-11-07
 **	What		Returns site data used by client
@@ -8,9 +8,9 @@
 **	Revisions
 ******************************************************************************************************************************/
 -- Select * From clearing_house.tbl_sites
---Drop Function clearing_house.fn_clearinghouse_review_site_client_data(int, int)
--- Select * From clearing_house.fn_clearinghouse_review_site_client_data(2, 27)
-Create Or Replace Function clearing_house.fn_clearinghouse_review_site_client_data(int, int)
+--Drop Function clearing_house.fn_clearinghouse_review_site(int, int)
+-- Select * From clearing_house.fn_clearinghouse_review_site(2, 27)
+Create Or Replace Function clearing_house.fn_clearinghouse_review_site(int, int)
 Returns Table (
 
 	local_db_id int,
@@ -101,7 +101,7 @@ Begin
 End $$ Language plpgsql;
 
 /*****************************************************************************************************************************
-**	Function	fn_clearinghouse_review_site_locations_client_data
+**	Function	fn_clearinghouse_review_site_locations
 **	Who			Roger Mähler
 **	When		2013-11-07
 **	What		Returns site locations used by client
@@ -110,9 +110,9 @@ End $$ Language plpgsql;
 **	Revisions
 ******************************************************************************************************************************/
 -- Select * From clearing_house.tbl_sites
--- Drop Function clearing_house.fn_clearinghouse_review_site_locations_client_data(int, int)
--- Select * From clearing_house.fn_clearinghouse_review_site_locations_client_data(2, 27)
-Create Or Replace Function clearing_house.fn_clearinghouse_review_site_locations_client_data(int, int)
+-- Drop Function clearing_house.fn_clearinghouse_review_site_locations(int, int)
+-- Select * From clearing_house.fn_clearinghouse_review_site_locations(2, 27)
+Create Or Replace Function clearing_house.fn_clearinghouse_review_site_locations(int, int)
 Returns Table (
 
 	local_db_id int,
@@ -191,7 +191,7 @@ End $$ Language plpgsql;
 
 
 /*****************************************************************************************************************************
-**	Function	fn_clearinghouse_review_site_references_client_data
+**	Function	fn_clearinghouse_review_site_references
 **	Who			Roger Mähler
 **	When		2013-11-07
 **	What		Returns site locations used by client
@@ -200,9 +200,9 @@ End $$ Language plpgsql;
 **	Revisions
 ******************************************************************************************************************************/
 -- Select * From clearing_house.tbl_sites
--- Drop Function clearing_house.fn_clearinghouse_review_site_references_client_data(int, int)
--- Select * From clearing_house.fn_clearinghouse_review_site_references_client_data(2, 27)
-Create Or Replace Function clearing_house.fn_clearinghouse_review_site_references_client_data(int, int)
+-- Drop Function clearing_house.fn_clearinghouse_review_site_references(int, int)
+-- Select * From clearing_house.fn_clearinghouse_review_site_references(2, 27)
+Create Or Replace Function clearing_house.fn_clearinghouse_review_site_references(int, int)
 Returns Table (
 
 	local_db_id int,
@@ -262,7 +262,7 @@ Begin
 End $$ Language plpgsql;
 
 /*****************************************************************************************************************************
-**	Function	fn_clearinghouse_review_site_natgridrefs_client_data
+**	Function	fn_clearinghouse_review_site_natgridrefs
 **	Who			Roger Mähler
 **	When		2013-11-07
 **	What		Returns site natgridrefs used by client
@@ -271,9 +271,9 @@ End $$ Language plpgsql;
 **	Revisions
 ******************************************************************************************************************************/
 -- Select * From clearing_house.tbl_sites
--- Drop Function clearing_house.fn_clearinghouse_review_site_natgridrefs_client_data(int, int)
--- Select * From clearing_house.fn_clearinghouse_review_site_natgridrefs_client_data(2, 27)
-Create Or Replace Function clearing_house.fn_clearinghouse_review_site_natgridrefs_client_data(int, int)
+-- Drop Function clearing_house.fn_clearinghouse_review_site_natgridrefs(int, int)
+-- Select * From clearing_house.fn_clearinghouse_review_site_natgridrefs(2, 27)
+Create Or Replace Function clearing_house.fn_clearinghouse_review_site_natgridrefs(int, int)
 Returns Table (
 
 	local_db_id int,
@@ -330,7 +330,7 @@ Begin
 End $$ Language plpgsql;
 
 
-create or replace function clearing_house.fn_clearinghouse_review_site_projects_client_data(p_submission_id integer, p_site_id integer)
+create or replace function clearing_house.fn_clearinghouse_review_site_projects(p_submission_id integer, p_site_id integer)
   returns table(
     local_db_id integer,
     site_id integer,
@@ -458,5 +458,5 @@ end $body$
   cost 100
   rows 1000;
 
-alter function clearing_house.fn_clearinghouse_review_dataset_contacts_client_data(integer, integer)
+alter function clearing_house.fn_clearinghouse_review_site_projects(integer, integer)
   owner to clearinghouse_worker;
