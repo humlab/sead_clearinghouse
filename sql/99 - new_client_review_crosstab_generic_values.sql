@@ -151,15 +151,6 @@ Begin
 
 End $BODY$ LANGUAGE plpgsql VOLATILE;
 
-Explain
-    With generic_type As (
-        (Select 1 As analysis_type_id From clearing_house.tbl_dendro Where submission_id = 2 Limit 1)
-         Union
-        (Select 1 As analysis_type_id From clearing_house.tbl_ceramics Where submission_id = 2 Limit 1)
-    )
-        Select analysis_type_id
-        From generic_type
-        Limit 1
 -- Select * from clearing_house.fn_clearinghouse_review_generic_analysis_lookup_values_crosstab(3,0);
 Create Or Replace Function clearing_house.fn_clearinghouse_review_generic_analysis_lookup_values_crosstab(p_submission_id int, p_analysis_type_id int)
 Returns Table (
@@ -235,4 +226,3 @@ $$ LANGUAGE 'plpgsql';
 
 
 
-    
