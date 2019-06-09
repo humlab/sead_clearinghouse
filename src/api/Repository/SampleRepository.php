@@ -5,7 +5,6 @@ namespace Repository {
     class SampleRepository extends RepositoryBase {
 
         function __construct(&$conn, $schema_name) {
-            // TODO: Use some sort of view instead...?
             parent::__construct($conn, "tbl_physical_samples", array("submission_id", "physical_sample_id"), $schema_name);
         }
 
@@ -23,7 +22,9 @@ namespace Repository {
             $colours = $this->getAdapter()->execute_procedure("clearing_house.fn_clearinghouse_review_sample_colours", array($submission_id, $sample_id));
             $images = $this->getAdapter()->execute_procedure("clearing_house.fn_clearinghouse_review_sample_images", array($submission_id, $sample_id));
             $locations = $this->getAdapter()->execute_procedure("clearing_house.fn_clearinghouse_review_sample_locations", array($submission_id, $sample_id));
-            $dendro_date_notes = $this->getAdapter()->execute_procedure("clearing_house.fn_clearinghouse_review_dendro_date_notes", array($submission_id, $sample_id));
+            $dendro_dates = $this->getAdapter()->execute_procedure("clearing_house.fn_clearinghouse_review_sample_dendro_dates", array($submission_id, $sample_id));
+            $dendro_date_notes = $this->getAdapter()->execute_procedure("clearing_house.fn_clearinghouse_review_sample_dendro_date_notes", array($submission_id, $sample_id));
+            $positions = $this->getAdapter()->execute_procedure("clearing_house.fn_clearinghouse_review_sample_positions", array($submission_id, $sample_id));
 
             return array(
 
@@ -41,6 +42,8 @@ namespace Repository {
                 "colours" => $colours,
                 "images" => $images,
                 "locations" => $locations,
+                "positions" => $positions,
+                "dendro_dates" => $dendro_dates,
                 "dendro_date_notes" => $dendro_date_notes
 
             );

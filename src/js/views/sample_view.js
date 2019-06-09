@@ -86,6 +86,21 @@ var Sample_Column_Store = window.Sample_Column_Store = {
             { column_name: "Description", column_field: "description", public_column_field: "public_description" },
             { column_name: "Updated", column_field: "date_updated" }
         ],
+        positions: [
+            { column_name: "Id", column_field: "local_db_id" },
+            { column_name: "Position", column_field: "sample_position", public_column_field: "public_sample_position" },
+            { column_name: "Accuracy", column_field: "position_accuracy", public_column_field: "public_position_accuracy" },
+            { column_name: "Method", column_field: "method_name", public_column_field: "public_method_name" }
+        ],
+        dendro_dates: [
+            { column_name: "Id", column_field: "local_db_id" },
+            { column_name: "Sample name", column_field: "sample_name", public_column_field: "public_sample_name" },
+            { column_name: "Type", column_field: "dating_type", public_column_field: "public_dating_type" },
+            { column_name: "Season", column_field: "season_type", public_column_field: "public_season_type" },
+            { column_name: "Dating", column_field: "date", public_column_field: "public_date" },
+            { column_name: "Error: years -", column_field: "error_years_minus", public_column_field: "public_error_years_minus" },
+            { column_name: "Error: years +", column_field: "error_years_plus", public_column_field: "public_error_years_plus" }
+        ],
         dendro_date_notes: [
             { column_name: "Id", column_field: "local_db_id" },
             { column_name: "Note", column_field: "note", public_column_field: "public_note" },

@@ -1,85 +1,89 @@
--- Display when sample is clicked ()
--- No data avaliable for Ceramics or Dendro0
--- SAMPLE POSITIONS FUNCTION***
+-- drop function clearing_house.fn_clearinghouse_review_sample_positions_client_data(integer, integer);
 
--- New function, similar to the sample groups one.
+create or replace function clearing_house.fn_clearinghouse_review_sample_positions(p_submission_id integer, p_physical_sample_id integer)
+  returns table (
 
--- Function: clearing_house.fn_clearinghouse_review_sample_positions_client_data(integer, integer)
+      local_db_id integer,
+      sample_position text,
+      position_accuracy character varying,
+      method_name character varying,
 
--- DROP FUNCTION clearing_house.fn_clearinghouse_review_sample_positions_client_data(integer, integer);
+      public_db_id integer,
+      public_sample_position text,
+      public_position_accuracy character varying,
+      public_method_name character varying,
 
-CREATE OR REPLACE FUNCTION clearing_house.fn_clearinghouse_review_sample_positions_client_data(
-    IN integer,
-    IN integer)
-  RETURNS TABLE(local_db_id integer, sample_position character varying, position_accuracy character varying, method_name character varying, public_db_id integer, public_sample_position character varying, public_position_accuracy character varying, public_method_name character varying, entity_type_id integer) AS
-$BODY$
-Declare
+      entity_type_id integer
+) as
+$body$
+declare
     entity_type_id int;
-Begin
+begin
 
     entity_type_id := clearing_house.fn_get_entity_type_for('tbl_sample_coordinates');
 
-	Return Query
+    return query
 
-		Select
-			LDB.local_db_id				               	As local_db_id,
-			coalesce(LDB.dimension_name::text, '') || ' ' || coalesce(LDB.measurement::text, '')                   		As sample_position,
-			LDB.accuracy                       		As position_accuracy,
-			LDB.method_name                       			As method_name,
+        select
+            ldb.local_db_id				               	as local_db_id,
+            coalesce(ldb.dimension_name, '') || ' ' ||
+                coalesce(ldb.measurement, '')           as sample_position,
+            ldb.accuracy                       		    as position_accuracy,
+            ldb.method_name                       		as method_name,
 
-			LDB.public_db_id				        As public_db_id,
-			coalesce(RDB.dimension_name::text, '') || ' ' || coalesce(RDB.measurement::text, '')                   		As public_sample_position,
-			RDB.accuracy                       		As public_position_accuracy,
-			RDB.method_name                       			As public_method_name,
-			RDB.dimension_name                       		As public_dimension_name,
-			entity_type_id						As entity_type_id
-		From (
-			Select		ps.source_id						As source_id,
-					ps.submission_id					As submission_id,
-					ps.local_db_id						As physical_sample_id,
-					d.local_db_id						As local_db_id,
-					d.public_db_id						As public_db_id,
-					d.merged_db_id						As merged_db_id,
-					c.measurement						As measurement,
-					c.accuracy						As accuracy,
-					m.method_name						As method_name,
-					d.dimension_name					As dimension_name
-			From clearing_house.view_physical_samples ps
-			Join clearing_house.view_sample_coordinates c
-			  On c.physical_sample_id = ps.merged_db_id
-			 And c.submission_id In (0, ps.submission_id)
-			Join clearing_house.view_coordinate_method_dimensions md
-			  On md.merged_db_id = c.coordinate_method_dimension_id
-			 And md.submission_id In (0, ps.submission_id)
-			Join clearing_house.view_methods m
-			  On m.merged_db_id = md.method_id
-			 And m.submission_id In (0, ps.submission_id)
-			Join clearing_house.view_dimensions d
-			  On d.merged_db_id = md.dimension_id
-			 And d.submission_id In (0, ps.submission_id)
-			Where 1 = 1
-		) As LDB Left join (
-			Select		c.sample_coordinate_id					As sample_coordinate_id,
-					c.measurement						As measurement,
-					c.accuracy						As accuracy,
-					m.method_name						As method_name,
-					d.dimension_name					As dimension_name
-			From public.tbl_sample_coordinates c
-			Join public.tbl_coordinate_method_dimensions md
-			  On md.coordinate_method_dimension_id = c.coordinate_method_dimension_id
-			Join public.tbl_methods m
-			  On m.method_id = md.method_id
-			Join public.tbl_dimensions d
-			  On d.dimension_id = md.dimension_id
-		) As RDB
-		  On RDB.sample_coordinate_id = LDB.public_db_id
-		Where LDB.source_id = 1
-		  And LDB.submission_id = $1
-		  And LDB.sample_group_id = -$2;
+            ldb.public_db_id				            as public_db_id,
+            coalesce(rdb.dimension_name, '') || ' '||
+                coalesce(rdb.measurement, '')           as public_sample_position,
+            rdb.accuracy                       		    as public_position_accuracy,
+            rdb.method_name                       		as public_method_name,
+            rdb.dimension_name                       	as public_dimension_name,
+            entity_type_id						        as entity_type_id
+        from (
 
-End $BODY$
-  LANGUAGE plpgsql VOLATILE
-  COST 100
-  ROWS 1000;
-ALTER FUNCTION clearing_house.fn_clearinghouse_review_sample_group_positions_client_data(integer, integer)
-  OWNER TO clearinghouse_worker;
+            select	ps.source_id						as source_id,
+                    ps.submission_id					as submission_id,
+                    ps.local_db_id						as physical_sample_id,
+                    d.local_db_id						as local_db_id,
+                    d.public_db_id						as public_db_id,
+                    d.merged_db_id						as merged_db_id,
+                    c.measurement::text 				as measurement,
+                    c.accuracy						    as accuracy,
+                    m.method_name						as method_name,
+                    d.dimension_name::text				as dimension_name
+            from clearing_house.view_physical_samples ps
+            join clearing_house.view_sample_coordinates c
+              on c.physical_sample_id = ps.merged_db_id
+             and c.submission_id in (0, ps.submission_id)
+            join clearing_house.view_coordinate_method_dimensions md
+              on md.merged_db_id = c.coordinate_method_dimension_id
+             and md.submission_id in (0, ps.submission_id)
+            join clearing_house.view_methods m
+              on m.merged_db_id = md.method_id
+             and m.submission_id in (0, ps.submission_id)
+            join clearing_house.view_dimensions d
+              on d.merged_db_id = md.dimension_id
+             and d.submission_id in (0, ps.submission_id)
+
+        ) as ldb left join (
+
+            select	c.sample_coordinate_id		as sample_coordinate_id,
+                    c.measurement::text			as measurement,
+                    c.accuracy					as accuracy,
+                    m.method_name				as method_name,
+                    d.dimension_name::text		as dimension_name
+            from public.tbl_sample_coordinates c
+            join public.tbl_coordinate_method_dimensions md
+              on md.coordinate_method_dimension_id = c.coordinate_method_dimension_id
+            join public.tbl_methods m
+              on m.method_id = md.method_id
+            join public.tbl_dimensions d
+              on d.dimension_id = md.dimension_id
+
+        ) as rdb
+          on rdb.sample_coordinate_id = ldb.public_db_id
+        where ldb.source_id = 1
+          and ldb.submission_id = p_submission_id
+          and ldb.physical_sample_id = -p_physical_sample_id;
+
+end $body$
+  language plpgsql;

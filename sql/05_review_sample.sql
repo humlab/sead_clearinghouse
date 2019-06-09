@@ -981,7 +981,7 @@ End $$ Language plpgsql;
 
 
 -- drop function clearing_house.fn_clearinghouse_review_dendro_date_notes(integer, integer);
-create or replace function clearing_house.fn_clearinghouse_review_dendro_date_notes(p_submission_id integer, p_physical_sample_id integer)
+create or replace function clearing_house.fn_clearinghouse_review_sample_dendro_date_notes(p_submission_id integer, p_physical_sample_id integer)
 returns table(
     local_db_id    integer,
     note           text,
@@ -1035,5 +1035,233 @@ begin
 end
 $body$;
 
-alter function clearing_house.fn_clearinghouse_review_dendro_date_notes(integer, integer)
-    owner to clearinghouse_worker;
+-- drop function clearing_house.fn_clearinghouse_review_sample_dendro_dates(integer, integer);
+create or replace function clearing_house.fn_clearinghouse_review_sample_dendro_dates(p_submission_id integer, p_physical_sample_id integer)
+returns table(
+
+    local_db_id integer,
+    sample_name character varying,
+    dating_type character varying,
+    season_type character varying,
+    date text,
+    error_years_minus text,
+    error_years_plus text,
+
+    public_db_id integer,
+    public_sample_name character varying,
+    public_dating_type character varying,
+    public_season_type character varying,
+    public_date text,
+    public_error_years_minus text,
+    public_error_years_plus text,
+
+    entity_type_id integer
+) as
+$body$
+declare
+    entity_type_id int;
+begin
+    entity_type_id := clearing_house.fn_get_entity_type_for('tbl_dendro_dates');
+
+    return query
+
+        select
+
+            ldb.local_db_id				               						as dendro_date_id,
+            ldb.sample_name                     							as sample_name,
+            ldb.lookup_name													as dating_type,
+            ldb.season_or_qualifier_type									as season_type,
+            coalesce(ldb.uncertainty, '') ||
+                coalesce(ldb.age_older || '-', '') ||
+                coalesce(ldb.age_younger, '') ||' '|| ldb.age_type          as date,
+            coalesce(ldb.error_uncertainty_type, '') || ' ' ||
+                coalesce(ldb.error_minus, '') 	                            as error_years_minus,
+            coalesce(ldb.error_uncertainty_type, '') || ' ' ||
+                coalesce(ldb.error_plus, '') 	                            as error_years_plus,
+
+            rdb.dendro_date_id												as public_db_id,
+            rdb.sample_name                     							as public_sample_name,
+            rdb.lookup_name													as public_dating_type,
+            rdb.season_or_qualifier_type									as public_season_type,
+            coalesce(rdb.uncertainty::text, '') ||
+                coalesce(rdb.age_older || '-', '') ||
+                coalesce(rdb.age_younger, '') ||' '|| rdb.age_type          as public_date,
+            coalesce(rdb.error_uncertainty_type, '') || ' ' ||
+                coalesce(rdb.error_minus, '')                               as public_error_years_minus,
+            coalesce(rdb.error_uncertainty_type, '') || ' ' ||
+                coalesce(rdb.error_plus, '') 	                            as public_error_years_plus,
+            entity_type_id
+
+        from (
+
+            select	dd.source_id				 as source_id,
+                    dd.submission_id			 as submission_id,
+                    dd.local_db_id				 as local_db_id,
+                    dd.public_db_id				 as public_db_id,
+                    dd.merged_db_id				 as merged_db_id,
+                    ps.local_db_id				 as physical_sample_id,
+                    ps.sample_name				 as sample_name,
+                    dl.name 					 as lookup_name,
+                    soq.season_or_qualifier_type as season_or_qualifier_type,
+                    du.uncertainty::text		 as uncertainty,
+                    dd.age_older::text			 as age_older,
+                    dd.age_younger::text		 as age_younger,
+                    at.age_type					 as age_type,
+                    eu.error_uncertainty_type	 as error_uncertainty_type,
+                    dd.error_minus::text		 as error_minus,
+                    dd.error_plus::text			 as error_plus,
+                    dd.date_updated				 as date_updated
+
+            from clearing_house.view_dendro_dates dd
+            join clearing_house.view_analysis_entities ae
+              on ae.merged_db_id = dd.analysis_entity_id
+             and ae.submission_id in (0, dd.submission_id)
+            left join clearing_house.view_age_types at
+              on at.merged_db_id = dd.age_type_id
+             and at.submission_id in (0, dd.submission_id)
+            left join clearing_house.view_dating_uncertainty du
+              on du.merged_db_id = dd.dating_uncertainty_id
+             and du.submission_id in (0, dd.submission_id)
+            left join clearing_house.view_error_uncertainties eu
+              on eu.merged_db_id = dd.error_uncertainty_id
+             and eu.submission_id in (0, dd.submission_id)
+            left join clearing_house.view_season_or_qualifier soq
+              on soq.merged_db_id = dd.season_or_qualifier_id
+             and soq.submission_id in (0, dd.submission_id)
+            left join clearing_house.view_dendro_lookup dl
+              on dl.merged_db_id = dd.dendro_lookup_id
+             and dl.submission_id in (0, dd.submission_id)
+            join clearing_house.view_physical_samples ps
+              on ps.merged_db_id = ae.physical_sample_id
+             and ps.submission_id in (0, dd.submission_id)
+
+        ) as ldb
+        left join (
+            select 	ps.physical_sample_id		 as physical_sample_id,
+                    ps.sample_name				 as sample_name,
+                    dd.dendro_date_id			 as dendro_date_id,
+                    dl.name 					 as lookup_name,
+                    soq.season_or_qualifier_type as season_or_qualifier_type,
+                    du.uncertainty::text		 as uncertainty,
+                    dd.age_older::text			 as age_older,
+                    dd.age_younger::text		 as age_younger,
+                    at.age_type				     as age_type,
+                    eu.error_uncertainty_type	 as error_uncertainty_type,
+                    dd.error_minus::text		 as error_minus,
+                    dd.error_plus::text			 as error_plus,
+                    dd.date_updated				 as date_updated
+
+            from public.tbl_physical_samples ps
+            join public.tbl_analysis_entities ae
+                on ps.physical_sample_id = ae.physical_sample_id
+            join public.tbl_dendro_dates dd
+                on ae.analysis_entity_id = dd.analysis_entity_id
+            join public.tbl_age_types at
+                on at.age_type_id = dd.age_type_id
+            left join public.tbl_dating_uncertainty du
+                on du.dating_uncertainty_id = dd.dating_uncertainty_id
+            left join public.tbl_error_uncertainties eu
+                on eu.error_uncertainty_id = dd.error_uncertainty_id
+            left join public.tbl_season_or_qualifier soq
+                on soq.season_or_qualifier_id = dd.season_or_qualifier_id
+            left join public.tbl_dendro_lookup dl
+                on dl.dendro_lookup_id = dd.dendro_lookup_id
+        ) as rdb
+          on rdb.dendro_date_id = ldb.public_db_id
+
+        where ldb.source_id = 1
+          and ldb.submission_id = p_submission_id
+          and ldb.physical_sample_id = -p_physical_sample_id;
+
+end
+$body$ language plpgsql;
+
+-- drop function clearing_house.fn_clearinghouse_review_sample_positions_client_data(integer, integer);
+
+create or replace function clearing_house.fn_clearinghouse_review_sample_positions(p_submission_id integer, p_physical_sample_id integer)
+  returns table (
+
+      local_db_id integer,
+      sample_position text,
+      position_accuracy character varying,
+      method_name character varying,
+
+      public_db_id integer,
+      public_sample_position text,
+      public_position_accuracy character varying,
+      public_method_name character varying,
+
+      entity_type_id integer
+) as
+$body$
+declare
+    entity_type_id int;
+begin
+
+    entity_type_id := clearing_house.fn_get_entity_type_for('tbl_sample_coordinates');
+
+    return query
+
+        select
+            ldb.local_db_id				               	as local_db_id,
+            coalesce(ldb.dimension_name, '') || ' ' ||
+                coalesce(ldb.measurement, '')           as sample_position,
+            ldb.accuracy                       		    as position_accuracy,
+            ldb.method_name                       		as method_name,
+
+            ldb.public_db_id				            as public_db_id,
+            coalesce(rdb.dimension_name, '') || ' '||
+                coalesce(rdb.measurement, '')           as public_sample_position,
+            rdb.accuracy                       		    as public_position_accuracy,
+            rdb.method_name                       		as public_method_name,
+            rdb.dimension_name                       	as public_dimension_name,
+            entity_type_id						        as entity_type_id
+        from (
+
+            select	ps.source_id						as source_id,
+                    ps.submission_id					as submission_id,
+                    ps.local_db_id						as physical_sample_id,
+                    d.local_db_id						as local_db_id,
+                    d.public_db_id						as public_db_id,
+                    d.merged_db_id						as merged_db_id,
+                    c.measurement::text 				as measurement,
+                    c.accuracy						    as accuracy,
+                    m.method_name						as method_name,
+                    d.dimension_name::text				as dimension_name
+            from clearing_house.view_physical_samples ps
+            join clearing_house.view_sample_coordinates c
+              on c.physical_sample_id = ps.merged_db_id
+             and c.submission_id in (0, ps.submission_id)
+            join clearing_house.view_coordinate_method_dimensions md
+              on md.merged_db_id = c.coordinate_method_dimension_id
+             and md.submission_id in (0, ps.submission_id)
+            join clearing_house.view_methods m
+              on m.merged_db_id = md.method_id
+             and m.submission_id in (0, ps.submission_id)
+            join clearing_house.view_dimensions d
+              on d.merged_db_id = md.dimension_id
+             and d.submission_id in (0, ps.submission_id)
+
+        ) as ldb left join (
+
+            select	c.sample_coordinate_id		as sample_coordinate_id,
+                    c.measurement::text			as measurement,
+                    c.accuracy					as accuracy,
+                    m.method_name				as method_name,
+                    d.dimension_name::text		as dimension_name
+            from public.tbl_sample_coordinates c
+            join public.tbl_coordinate_method_dimensions md
+              on md.coordinate_method_dimension_id = c.coordinate_method_dimension_id
+            join public.tbl_methods m
+              on m.method_id = md.method_id
+            join public.tbl_dimensions d
+              on d.dimension_id = md.dimension_id
+
+        ) as rdb
+          on rdb.sample_coordinate_id = ldb.public_db_id
+        where ldb.source_id = 1
+          and ldb.submission_id = p_submission_id
+          and ldb.physical_sample_id = -p_physical_sample_id;
+
+end $body$
+  language plpgsql;
