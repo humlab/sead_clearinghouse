@@ -26,24 +26,49 @@ namespace InfraStructure {
 
         public static function getDatabaseConfig()
         {
-            return self::$database_config ?: ($database_config = self::readDatabaseConfig());
+            return self::$database_config ?: ($database_config = self::readDatabaseConfigFromEnvironment());
         }
 
-        public static function readDatabaseConfig()
+        public static function readDatabaseConfigFromEnvironment()
         {
-            // if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-                # return require $_SERVER['DOCUMENT_ROOT'] . '/../conf/credentials.php';
-
+            if (\InfraStructure\ConfigService::envConfigSet()) {
                 return array(
-                    "database" => getenv("CH_DATABASE"),
-                    "hostname" => getenv("CH_HOST"),
-                    "port" => getenv("CH_PORT"),
-                    "username" => getenv("CH_USER"),
-                    "password" => getenv("CH_PASSWORD")
+                    "CH_DATABASE" => getenv("CH_DATABASE"),
+                    "CH_HOST" => getenv("CH_HOST"),
+                    "CH_PORT" => getenv("CH_PORT"),
+                    "CH_USER" => getenv("CH_USER"),
+                    "CH_PASSWORD" => getenv("CH_PASSWORD")
                 );
+            }
+            return false;
+        }
 
-            // }
-            // return require_once '/www/conf/clearing_house_database_conf.php';
+        public static function readDatabaseConfigFromFile()
+        {
+            $filename = "/etc/.pgpass.env";
+            ini_set('auto_detect_line_endings', true);
+            if (!\file_exists($filename)) {
+                return NULL;
+            }
+            $text = file_get_contents($filename);
+            $lines = explode("\n",$text);
+            $options = array();
+            foreach ($lines as $line) {
+                $keyvalue = explode("=", $line);
+                if ($keyvalue[0] !== "") {
+                    $options[trim($keyvalue[0])] = trim($keyvalue[1]);
+                }
+            }
+            return $options;
+        }
+
+        public static function envConfigSet()
+        {
+            return getenv("CH_DATABASE") &&
+                   getenv("CH_HOST") &&
+                   getenv("CH_PORT") &&
+                   getenv("CH_USER") &&
+                   getenv("CH_PASSWORD");
         }
     }
 

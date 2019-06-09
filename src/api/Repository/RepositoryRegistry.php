@@ -1,19 +1,25 @@
 <?php
 
 namespace Repository {
-         
+
     class RepositoryRegistry {
 
         private $con = null;
         protected $schema_name = null;
+        protected $options = null;
         protected $store = array();
-        
+
         public function getConnection()
         {
-            return $this->con ?: ($this->con = \InfraStructure\ConnectionFactory::CreateDefault());
-        }       
-        
+            return $this->con ?: ($this->con = \InfraStructure\ConnectionFactory::Create($this->options));
+        }
+
         function __construct($schema_name = "clearing_house") {
+            $options = \InfraStructure\ConfigService::readDatabaseConfigFromEnvironment();
+            if (!$options) {
+                $options = \InfraStructure\ConfigService::readDatabaseConfigFromFile();
+            }
+            $this->options = $options;
             $this->schema_name = $schema_name;
         }
 
@@ -25,7 +31,7 @@ namespace Repository {
             }
             return $this->store[$class_name];
         }
-        
+
         public function getUserRepository()
         {
             return $this->getRepository("\Repository\UserRepository");
@@ -50,12 +56,12 @@ namespace Repository {
         {
             return $this->getRepository("\Repository\SampleGroupRepository");
         }
-        
+
         public function getSampleRepository()
         {
             return $this->getRepository("\Repository\SampleRepository");
         }
-        
+
         public function getSubmissionRejectRepository()
         {
             return $this->getRepository("\Repository\SubmissionRejectRepository");
@@ -65,7 +71,7 @@ namespace Repository {
         {
             return $this->getRepository("\Repository\SessionRepository");
         }
-        
+
         public function getActivityRepository()
         {
             return $this->getRepository("\Repository\ActivityRepository");
@@ -80,16 +86,16 @@ namespace Repository {
         {
             return $this->getRepository("\Repository\AcceptedQueueRepository");
         }
-        
+
         public function getSignalRepository()
         {
             return $this->getRepository("\Repository\SignalRepository");
         }
-        
+
         public function getSettingRepository()
         {
             return $this->getRepository("\Repository\SettingRepository");
-        }        
+        }
     }
 
 }
