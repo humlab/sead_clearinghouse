@@ -1183,12 +1183,12 @@ create or replace function clearing_house.fn_clearinghouse_review_sample_positio
 
       local_db_id integer,
       sample_position text,
-      position_accuracy character varying,
+      position_accuracy numeric(20,10),
       method_name character varying,
 
       public_db_id integer,
       public_sample_position text,
-      public_position_accuracy character varying,
+      public_position_accuracy numeric(20,10),
       public_method_name character varying,
 
       entity_type_id integer
@@ -1214,7 +1214,6 @@ begin
                 coalesce(rdb.measurement, '')           as public_sample_position,
             rdb.accuracy                       		    as public_position_accuracy,
             rdb.method_name                       		as public_method_name,
-            rdb.dimension_name                       	as public_dimension_name,
             entity_type_id						        as entity_type_id
         from (
 
