@@ -1,3 +1,7 @@
+/*
+select *
+from clearing_house.fn_clearinghouse_review_generic_analysis_lookup_values_crosstab(2, NULL)
+*/
 -- Generic crosstab report (replaces cermaics crosstab also)
 
 Create Or Replace View clearing_house.view_generic_analysis_lookup_values As
@@ -31,7 +35,13 @@ Create Or Replace View clearing_house.view_generic_analysis_lookup As
     Select distinct 2 As analysis_type_id, name
     From clearing_house.tbl_dendro_lookup;
 
-Create Or Replace Function clearing_house.fn_clearinghouse_review_dataset_generic_analysis_lookup_values(p_submission_id IN integer, p_dataset_id IN integer)
+
+-- Drop Function clearing_house.fn_clearinghouse_review_dataset_generic_analysis_lookup_values(int, int, int)
+Create Or Replace Function clearing_house.fn_clearinghouse_review_dataset_generic_analysis_lookup_values(
+    p_submission_id IN integer,
+    p_dataset_id IN integer,
+    p_analysis_type_id integer
+)
 Returns Table (
     local_db_id integer,
     method_id integer,
@@ -47,7 +57,7 @@ Returns Table (
     public_lookup_name character varying,
     public_measurement_value character varying,
     entity_type_id integer,
-    date_updated character varying
+    date_updated text
 ) AS
 $BODY$
 Declare
@@ -67,6 +77,7 @@ Begin
                     ps.public_db_id 			    As public_physical_sample_id,
                     m.public_db_id 			        As public_method_id,
 
+                    vv.analysis_type_id,
                     vv.analysis_entity_id,
                     vv.local_db_id					As local_db_id,
                     vv.public_db_id					As public_db_id,
@@ -99,8 +110,8 @@ Begin
                     ps.physical_sample_id       As physical_sample_id,
                     m.method_id                 As method_id,
 
-                    pvv.public_db_id            As public_db_id,
-                    pvv.analysis_entity_id,
+                    lv.public_db_id            As public_db_id,
+                    lv.analysis_entity_id,
                     ps.sample_name              As sample_name,
                     m.method_name               As method_name,
 
@@ -146,7 +157,8 @@ Begin
              And RDB.analysis_entity_id = LDB.analysis_entity_id
             Where LDB.source_id = 1
               And LDB.submission_id = p_submission_id
-              And LDB.local_dataset_id = Coalesce(-p_dataset_id, LDB.local_dataset_id);
+              And LDB.local_dataset_id = Coalesce(-p_dataset_id, LDB.local_dataset_id)
+              And LDB.analysis_type_id = p_analysis_type_id;
             -- Order by LDB.local_physical_sample_id;
 
 End $BODY$ LANGUAGE plpgsql VOLATILE;
@@ -188,9 +200,8 @@ Begin
                 local_db_id, public_db_id, entity_type_id,              -- extra_columns
 				lookup_name,                                            -- category
 				ARRAY[lookup_name, ''text'', max(measurement_value), max(public_measurement_value)] as measurement_value
-		FROM clearing_house.fn_clearinghouse_review_dataset_generic_analysis_lookup_values(%s, null) c
+		FROM clearing_house.fn_clearinghouse_review_dataset_generic_analysis_lookup_values(%s, null, %s) c
 		WHERE TRUE
-          AND %s in (0, analysis_type_id)
 		GROUP BY sample_name, local_db_id, public_db_id, entity_type_id, lookup_name
 		ORDER BY sample_name, lookup_name', p_submission_id, coalesce(p_analysis_type_id, 0));
 
@@ -215,14 +226,10 @@ Begin
                       v_column_names, v_source_sql, v_category_sql, v_typed_fields)
         Into v_sql;
 
-        Raise Info E'%s\n%s\n%s', v_sql, v_category_sql, v_source_sql;
+        -- Raise Info E'%s\n%s\n%s', v_sql, v_category_sql, v_source_sql;
 
         Return Query Execute v_sql;
 
     End IF;
 End
 $$ LANGUAGE 'plpgsql';
-
-
-
-

@@ -209,7 +209,7 @@ This is an auto-generated mail from the SEAD Clearing House system.
                 (16, 'Sample dimensions', 'Select * From clearing_house.fn_clearinghouse_report_sample_dimensions(?)'),
                 (17, 'Sample descriptions', 'Select * From clearing_house.fn_clearinghouse_report_sample_descriptions(?)'),
                 -- (18, 'Ceramic values', 'Select * From clearing_house.fn_clearinghouse_review_ceramic_values_crosstab(?)')
-                (18, 'Analysis values', 'Select * From clearing_house.fn_clearinghouse_review_generic_analysis_lookup_values_crosstab(?)')
+                (18, 'Analysis values', 'Select * From clearing_house.fn_clearinghouse_review_generic_analysis_lookup_values_crosstab(?, null)')
     on conflict (report_id)
         do update
             set report_name = excluded.report_name,
