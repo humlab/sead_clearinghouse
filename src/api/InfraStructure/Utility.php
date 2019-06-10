@@ -1,9 +1,9 @@
 <?php
 
 namespace InfraStructure {
-     
+
     class Utility {
-        
+
         public static function objectToArray($d) {
 
             if (is_object($d)) {
@@ -16,7 +16,7 @@ namespace InfraStructure {
 
             return $d;
         }
-        
+
         public static function Now()
         {
             return (new \DateTime('NOW'))->format('c');
@@ -26,12 +26,12 @@ namespace InfraStructure {
         {
             return strncmp($haystack, $needle, strlen($needle)) === 0;
         }
-        
+
         public static function endsWith($haystack, $needle)
         {
             return $needle === "" || substr($haystack, -strlen($needle)) === $needle;
         }
-        
+
           /**
          * Translates a camel case string into a string with underscores (e.g. firstName -&gt; first_name)
          * @param    string   $str    String in camel case format
@@ -53,10 +53,13 @@ namespace InfraStructure {
             if ($capitalise_first_char) {
                 $str[0] = strtoupper($str[0]);
             }
-            $func = create_function('$c', 'return ' . ($add_space ? '" " . ' : '') . 'strtoupper($c[1]);');
+            $space = $add_space ? " " : "";
+            $func = function($c) use ($space) {
+                return $space . strtoupper($c[1]);
+            };
             return preg_replace_callback('/_([a-z])/', $func, $str);
         }
-        
+
 //        function assoc2indexedMulti($array) {
 //            $index_array = array();
 //            foreach($array as $value) {
@@ -68,32 +71,32 @@ namespace InfraStructure {
 //            }
 //            return $index_array;
 //        }
-        
+
         function utf8_encode_recursive($data)
-        { 
+        {
             if (is_string($data)) {
-                return utf8_encode($data); 
+                return utf8_encode($data);
             }
             if (!is_array($data)) {
-                return $data; 
+                return $data;
             }
-            return array_map(function ($x) { return \InfraStructure\Utility::utf8_encode_recursive($x); }, $data); 
-        } 
+            return array_map(function ($x) { return \InfraStructure\Utility::utf8_encode_recursive($x); }, $data);
+        }
 
 //        function utf8_decode($dat)
-//        { 
-//          if (is_string($dat)) return utf8_decode($dat); 
-//          if (!is_array($dat)) return $dat; 
-//          $ret = array(); 
-//          foreach($dat as $i=>$d) $ret[$i] = utf8_decode_all($d); 
-//          return $ret; 
-//        } 
-        
+//        {
+//          if (is_string($dat)) return utf8_decode($dat);
+//          if (!is_array($dat)) return $dat;
+//          $ret = array();
+//          foreach($dat as $i=>$d) $ret[$i] = utf8_decode_all($d);
+//          return $ret;
+//        }
+
         public static function getServerIP()
         {
             return $_SERVER['REMOTE_ADDR'];
         }
-        
+
     }
 }
 
