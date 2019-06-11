@@ -73,13 +73,13 @@ module.exports = {
             _: "underscore",
             Backbone : "backbone",
         }),
-        new copyPlugin([
-            {
-                from: __dirname + '/src/api',
-                to: __dirname + '/public/api',
-                force: true,
-            },
-        ]),
+        // new copyPlugin([
+        //     {
+        //         from: __dirname + '/src/api',
+        //         to: __dirname + '/public/api',
+        //         force: true,
+        //     },
+        // ]),
         // ,
         // new CopyWebpackPlugin([
         //     {

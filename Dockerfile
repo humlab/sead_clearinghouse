@@ -4,6 +4,9 @@ ARG container_version=1.0
 ARG container_maintainer=roger.mahler@umu.se
 ARG container_build_date=2019-06-01
 
+ARG source_branch=master
+ENV source_branch=${source_branch}
+
 RUN apt-get update && \
     apt-get install -y \
        apt-transport-https \
@@ -36,7 +39,7 @@ RUN mkdir -p /tmp/deploy && \
         mv /sead_clearinghouse /tmp; \
     else \
         echo "Building from source in Github repository" ; \
-        git clone https://github.com/humlab/sead_clearinghouse.git ; \
+        git clone --branch ${source_branch} --single-branch https://github.com/humlab/sead_clearinghouse.git ; \
     fi && \
     cd /tmp/sead_clearinghouse/src && \
     rm -rf ./vendor && \

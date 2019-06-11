@@ -5,7 +5,7 @@ archive/
 *.zip
 *.7z
 *.phar
-public/
+/public/
 dist/
 .svn/
 .vscode/settings.json
@@ -18,5 +18,7 @@ package-lock.json
 __pycache__/
 *.pyperf
 vendor/
+api-cache/
+.docker.env
 .docker-env
 docker-compose.yml

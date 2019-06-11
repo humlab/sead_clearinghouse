@@ -16,6 +16,7 @@
     "update:autoload": "cd src && composer dump-autoload -o && cd ..",
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "npm run copy:clean && npx webpack --config webpack.config.js --mode development --no-color --watch",
+    "start:js:dev": "npx webpack --config webpack.config.js --mode development --no-color --watch",
     "build:dev": "npm run copy:clean && npx webpack --mode development --config webpack.config.js --no-color",
     "build:release": "npm run copy:clean && npx webpack --mode production --config webpack.config.js --no-color && npm run dist:build",
     "build:clean-db": "cd sql && bash 'install_clearinghouse_database.bash'",
