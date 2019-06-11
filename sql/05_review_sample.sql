@@ -984,6 +984,7 @@ End $$ Language plpgsql;
 create or replace function clearing_house.fn_clearinghouse_review_sample_dendro_date_notes(p_submission_id integer, p_physical_sample_id integer)
 returns table(
     local_db_id    integer,
+    dendro_date_id integer,
     note           text,
     public_db_id   integer,
     public_note    text,
@@ -1020,6 +1021,7 @@ begin
              and ps.submission_id in (0, dd.submission_id)
         )
             select ldb.local_db_id					        as local_db_id,
+                   ldb.dendro_date_id                       as dendro_date_id,
                    ldb.note                              	as note,
                    ldb.public_db_id                         as public_db_id,
                    rdb.note                              	as public_note,

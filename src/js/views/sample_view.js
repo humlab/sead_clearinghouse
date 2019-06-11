@@ -93,7 +93,7 @@ var Sample_Column_Store = window.Sample_Column_Store = {
             { column_name: "Method", column_field: "method_name", public_column_field: "public_method_name" }
         ],
         dendro_dates: [
-            { column_name: "Id", column_field: "local_db_id" },
+            { column_name: "Date Id", column_field: "local_db_id" },
             { column_name: "Sample name", column_field: "sample_name", public_column_field: "public_sample_name" },
             { column_name: "Type", column_field: "dating_type", public_column_field: "public_dating_type" },
             { column_name: "Season", column_field: "season_type", public_column_field: "public_season_type" },
@@ -103,6 +103,7 @@ var Sample_Column_Store = window.Sample_Column_Store = {
         ],
         dendro_date_notes: [
             { column_name: "Id", column_field: "local_db_id" },
+            { column_name: "Date Id", column_field: "dendro_date_id" },
             { column_name: "Note", column_field: "note", public_column_field: "public_note" },
             { column_name: "Updated", column_field: "date_updated" }
         ]
