@@ -1,9 +1,6 @@
 <?php
 
-require_once __DIR__ . '/class_loader.php';
-
-$loader = new ClassLoaderService();
-$loader->setup();
+require_once __DIR__ . '/autoload.php';
 
 $application = new \Application\Main();
 $application->run();

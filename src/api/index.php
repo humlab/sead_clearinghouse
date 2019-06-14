@@ -1,11 +1,6 @@
 <?php
 
-#require_once __DIR__ . '/class_loader.php';
-
-require __DIR__ . '/../vendor/autoload.php';
-
-#$loader = new ClassLoaderService();
-#$loader->setup();
+require __DIR__ . '/autoload.php';
 
 use Application\Main;
 use Application\Router;
@@ -15,6 +10,5 @@ $application->run();
 
 $router = new Router($application);
 $router->run();
-
 
 ?>

@@ -1,17 +1,14 @@
 <?php
 
-/* 
+/*
  * To change this license header, choose License Headers in Project Properties.
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
 
-require(__DIR__ . '/../../class_loader.php');
+require(__DIR__ . '/../../autoload.php');
 
 function soapSetup(){
-
-    $classLoader = new ClassLoaderService();
-    $classLoader->setup();
 
     \InfraStructure\SEADException::assertLoaded();
 }
