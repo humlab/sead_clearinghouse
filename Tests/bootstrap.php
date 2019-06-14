@@ -1,18 +1,30 @@
 <?php
 
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
+class ClassBootstrapService
+{
+    function map()
+    {
+        $api_dir =  __DIR__ . '/../src/api/';
+        return array(
+            'Application' => $api_dir,
+            'InfraStructure' => $api_dir,
+            'Repository' => $api_dir,
+            'Services' => $api_dir,
+            'Model' => $api_dir,
+            'Test' => $api_dir
+        );
+    }
 
-//ini_set('include_path', ini_get('include_path'));
+    function setup()
+    {
+        $autoloader =  __DIR__ . '/../public/vendor/autoload.php';
+        require_once $autoloader;
+        return $this;
+    }
 
-require_once __DIR__ . '/../public/api/class_loader.php';
+}
 
-$loader = new ClassLoaderService();
+$loader = new ClassBootstrapService();
 $loader->setup();
-
-
 
 ?>
