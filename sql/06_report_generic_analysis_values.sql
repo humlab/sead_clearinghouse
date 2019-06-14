@@ -1,22 +1,22 @@
 /*
-select *
-from clearing_house.fn_clearinghouse_review_generic_analysis_lookup_values_crosstab(2, NULL)
+-- select * from clearing_house.fn_clearinghouse_review_generic_analysis_lookup_values_crosstab(3, null);
 */
--- Generic crosstab report (replaces cermaics crosstab also)
-
+-- Generic crosstab report (replaces ceramics crosstab also)
+-- select analysis_type_id, count(*) from clearing_house.view_generic_analysis_lookup_values group by analysis_type_id
 Create Or Replace View clearing_house.view_generic_analysis_lookup_values As
     Select 1 As analysis_type_id, d.submission_id, d.source_id, d.merged_db_id, d.local_db_id, d.public_db_id, d.analysis_entity_id, d.measurement_value, d.date_updated, d.dendro_lookup_id As lookup_id, dl.name As lookup
     From clearing_house.view_dendro d
     Left Join clearing_house.view_dendro_lookup dl
-      On dl.submission_id = d.submission_id
-     And dl.merged_db_id = d.dendro_lookup_id
+      On dl.merged_db_id = d.dendro_lookup_id
+     And dl.submission_id in (0, d.submission_id)
     Union
     Select 2 As analysis_type_id, c.submission_id, c.source_id, c.merged_db_id, c.local_db_id, c.public_db_id, c.analysis_entity_id, c.measurement_value, c.date_updated, c.ceramics_lookup_id As lookup_id, cl.name As lookup
     From clearing_house.view_ceramics c
     Left join clearing_house.view_ceramics_lookup cl
-      On cl.submission_id = c.submission_id
-     And cl.merged_db_id = c.ceramics_lookup_id;
+      On cl.merged_db_id = c.ceramics_lookup_id
+     And cl.submission_id in (0, c.submission_id);
 
+-- select analysis_type_id, count(*) from clearing_house.view_generic_analysis_lookup_values group by analysis_type_id
 Create Or Replace View clearing_house.public_view_generic_analysis_lookup_values As
     Select 1 As analysis_type_id, 0 AS submission_id, 2 AS source_id, d.dendro_id AS merged_db_id, 0 AS local_db_id, d.dendro_id AS public_db_id, d.analysis_entity_id, d.measurement_value, d.date_updated, d.dendro_lookup_id AS lookup_id, dl.name AS lookup
     From public.tbl_dendro d
@@ -29,14 +29,20 @@ Create Or Replace View clearing_house.public_view_generic_analysis_lookup_values
       On c.ceramics_lookup_id = cl.ceramics_lookup_id;
 
 Create Or Replace View clearing_house.view_generic_analysis_lookup As
-    Select distinct 1 As analysis_type_id, name
-    From clearing_house.tbl_ceramics_lookup
-    Union
-    Select distinct 2 As analysis_type_id, name
-    From clearing_house.tbl_dendro_lookup;
+    with analysis_value_lookup as (
+        Select distinct 2 As analysis_type_id, name
+        From clearing_house.view_ceramics_lookup
+        Union
+        Select distinct 1 As analysis_type_id, name
+        From clearing_house.view_dendro_lookup
+    ) select analysis_type_id, name
+      from analysis_value_lookup
+      order by 1, 2;
 
-
+-- select * from clearing_house.fn_clearinghouse_review_dataset_generic_analysis_lookup_values(1, null, null);
 -- Drop Function clearing_house.fn_clearinghouse_review_dataset_generic_analysis_lookup_values(int, int, int)
+-- select analysis_type_id from clearing_house.view_generic_analysis_lookup_values where submission_id = 1 limit 1
+
 Create Or Replace Function clearing_house.fn_clearinghouse_review_dataset_generic_analysis_lookup_values(
     p_submission_id IN integer,
     p_dataset_id IN integer,
@@ -63,7 +69,12 @@ $BODY$
 Declare
     entity_type_id int;
 Begin
-    entity_type_id := clearing_house.fn_get_entity_type_for('tbl_ceramics');
+
+    if p_analysis_type_id is null then
+        p_analysis_type_id := (select min(analysis_type_id) from clearing_house.view_generic_analysis_lookup_values where submission_id = p_submission_id limit 1);
+    end if;
+
+    entity_type_id := clearing_house.fn_get_entity_type_for(case when p_analysis_type_id = 1 then 'tbl_dendro' else 'tbl_ceramics' end);
 	Return Query
         With LDB As (
             Select	d.submission_id                 As submission_id,
@@ -161,75 +172,94 @@ Begin
               And LDB.analysis_type_id = p_analysis_type_id;
             -- Order by LDB.local_physical_sample_id;
 
-End $BODY$ LANGUAGE plpgsql VOLATILE;
+End $BODY$ LANGUAGE plpgsql;
+-- FUNCTION: clearing_house.fn_clearinghouse_review_generic_analysis_lookup_values_crosstab(integer, integer)
 
--- Select * from clearing_house.fn_clearinghouse_review_generic_analysis_lookup_values_crosstab(3,0);
-Create Or Replace Function clearing_house.fn_clearinghouse_review_generic_analysis_lookup_values_crosstab(p_submission_id int, p_analysis_type_id int)
-Returns Table (
-    sample_name text,
-    local_db_id int,
-    public_db_id int,
-    entity_type_id int,
-    json_data_values json
-)
-As $$
-Declare
+-- DROP FUNCTION clearing_house.fn_clearinghouse_review_generic_analysis_lookup_values_crosstab(integer, integer);
+
+CREATE OR REPLACE FUNCTION clearing_house.fn_clearinghouse_review_generic_analysis_lookup_values_crosstab(
+	p_submission_id integer,
+	p_analysis_type_id integer DEFAULT NULL::integer)
+    RETURNS TABLE(sample_name text, local_db_id integer, public_db_id integer, entity_type_id integer, json_data_values json)
+    LANGUAGE 'plpgsql'
+
+    COST 100
+    VOLATILE
+    ROWS 1000
+AS $BODY$
+declare
 	v_category_sql text;
 	v_source_sql text;
 	v_typed_fields text;
 	v_column_names text;
 	v_sql text;
-Begin
-
-    If coalesce(p_analysis_type_id, 0) = 0 Then
-        Select analysis_type_id
-            Into p_analysis_type_id
-        From clearing_house.view_generic_analysis_lookup_values
-        Where submission_id = p_submission_id
+begin
+    if coalesce(p_analysis_type_id, 0) = 0 then
+        select analysis_type_id
+            into p_analysis_type_id
+        from clearing_house.view_generic_analysis_lookup_values
+        where submission_id = p_submission_id
         limit 1;
-    End If;
+    end if;
 
 	v_category_sql = format('
-        SELECT name
-        FROM clearing_house.view_generic_analysis_lookup
-        WHERE analysis_type_id = %s
-        ORDER BY name', p_analysis_type_id);
+        select name
+        from clearing_house.view_generic_analysis_lookup
+        where analysis_type_id = %s
+        order by name
+    ', p_analysis_type_id);
 
 	v_source_sql = format('
-		SELECT	sample_name,                                            -- row_name
-                local_db_id, public_db_id, entity_type_id,              -- extra_columns
-				lookup_name,                                            -- category
-				ARRAY[lookup_name, ''text'', max(measurement_value), max(public_measurement_value)] as measurement_value
-		FROM clearing_house.fn_clearinghouse_review_dataset_generic_analysis_lookup_values(%s, null, %s) c
-		WHERE TRUE
-		GROUP BY sample_name, local_db_id, public_db_id, entity_type_id, lookup_name
-		ORDER BY sample_name, lookup_name', p_submission_id, coalesce(p_analysis_type_id, 0));
+		select	sample_name, -- row name
+                local_db_id, public_db_id, entity_type_id, -- extra columns
+				lookup_name, -- category
+				to_json(array[lookup_name, ''text'', max(measurement_value), max(public_measurement_value)]) as measurement_value
+		from clearing_house.fn_clearinghouse_review_dataset_generic_analysis_lookup_values(%s, null, %s) c
+		where TRUE
+		group by sample_name, local_db_id, public_db_id, entity_type_id, lookup_name
+		order by sample_name, lookup_name
+    ', p_submission_id, p_analysis_type_id);
 
-	Select string_agg(format('%I text[]', name), ', ' order by name) as typed_fields,
-		   string_agg(format('ARRAY[%L, ''local'', ''public'']', name), ', ' order by name) AS column_names
-	    Into v_typed_fields, v_column_names
-	From clearing_house.view_generic_analysis_lookup
-    Where analysis_type_id = p_analysis_type_id;
+	v_typed_fields = (
+        select string_agg(format('%I json', name), ', ' order by name)
+        from clearing_house.view_generic_analysis_lookup
+        where analysis_type_id = p_analysis_type_id
+    );
+    v_column_names = (
+	    select string_agg(format('%I', name), ', ' order by name)
+	    from clearing_house.view_generic_analysis_lookup
+        where analysis_type_id = p_analysis_type_id
+    );
 
-    IF v_column_names IS NULL THEN
+    if v_column_names is null then
+        return query
+            select *
+            from (values ('nada'::text, null::int, null::int, null::int, null::json)) as v
+            where false;
+    else
+        v_sql = format('
+            with crosstab_values as (
+                select sample_name,
+                       local_db_id,
+                       public_db_id,
+                       entity_type_id,
+                       %s
+                from crosstab(%L, %L) as ct(
+                       sample_name text,
+                       local_db_id int,
+                       public_db_id int,
+                       entity_type_id int,
+                       %s
+                )
+            ) select sample_name, local_db_id, public_db_id, entity_type_id, to_json(x.*)
+              from crosstab_values x
+        ', v_column_names, v_source_sql, v_category_sql, v_typed_fields);
 
-        Return Query
-            Select *
-            From (VALUES ('NADA'::text, null::int, null::int, null::int, null::json)) AS V
-            Where FALSE;
+        -- Raise Info E'%\n%\n%', v_sql, v_category_sql, v_source_sql;
+        return query execute v_sql;
+    end if;
+end
+$BODY$;
 
-    Else
-
-        Select format('
-            SELECT sample_name, local_db_id, public_db_id, entity_type_id, array_to_json(ARRAY[%s]) AS json_data_values
-            FROM crosstab(%L, %L) AS ct(sample_name text, local_db_id int, public_db_id int, entity_type_id int, %s)',
-                      v_column_names, v_source_sql, v_category_sql, v_typed_fields)
-        Into v_sql;
-
-        -- Raise Info E'%s\n%s\n%s', v_sql, v_category_sql, v_source_sql;
-
-        Return Query Execute v_sql;
-
-    End IF;
-End
-$$ LANGUAGE 'plpgsql';
+ALTER FUNCTION clearing_house.fn_clearinghouse_review_generic_analysis_lookup_values_crosstab(integer, integer)
+    OWNER TO clearinghouse_worker;

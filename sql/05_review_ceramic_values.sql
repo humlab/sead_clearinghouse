@@ -3,7 +3,7 @@
 Create Or Replace Function clearing_house.fn_clearinghouse_review_dataset_ceramic_values_client_data(int, int)
 Returns Table (
 
-	local_db_id					int,
+    local_db_id					int,
     method_id					int,
     dataset_name				character varying,
     sample_name					character varying,
@@ -11,14 +11,14 @@ Returns Table (
     lookup_name				    character varying,
     measurement_value			character varying,
 
-	public_db_id 				int,
+    public_db_id 				int,
     public_method_id			int,
     public_sample_name			character varying,
     public_method_name			character varying,
     public_lookup_name		    character varying,
     public_measurement_value	character varying,
 
-	entity_type_id				int
+    entity_type_id				int
 ) As $$
 Declare
     entity_type_id int;
@@ -26,7 +26,7 @@ Begin
 
     entity_type_id := clearing_house.fn_get_entity_type_for('tbl_ceramics');
 
-	Return Query
+    Return Query
         With LDB As (
             Select	d.submission_id                         As submission_id,
                     d.source_id                             As source_id,
@@ -115,7 +115,7 @@ Begin
             Left Join RDB
               On 1 = 1
              And RDB.ceramics_id = LDB.public_db_id
-			 --And RDB.dataset_id = LDB.public_dataset_id
+             --And RDB.dataset_id = LDB.public_dataset_id
              --And RDB.physical_sample_id = LDB.public_physical_sample_id
              --And RDB.method_id = LDB.public_method_id
 
@@ -128,56 +128,61 @@ End $$ Language plpgsql;
 
 -- Drop Function clearing_house.fn_clearinghouse_review_ceramic_values_crosstab(p_submission_id int)
 -- select * from clearing_house.fn_clearinghouse_review_ceramic_values_crosstab(1)
-Create Or Replace Function clearing_house.fn_clearinghouse_review_ceramic_values_crosstab(p_submission_id int)
-RETURNS TABLE (sample_name text, local_db_id int, public_db_id int, entity_type_id int, json_data_values json)
-AS $$
-	DECLARE
-		v_category_sql text;
-		v_source_sql text;
-		v_typed_fields text;
-		v_field_names text;
-		v_column_names text;
-		v_sql text;
-BEGIN
-	v_category_sql = '
-		SELECT name
-		FROM clearing_house.tbl_ceramics_lookup
-		ORDER BY name
-	';
-	v_source_sql = format('
-		SELECT	sample_name,                                            -- row_name
+create or replace function clearing_house.fn_clearinghouse_review_ceramic_values_crosstab(p_submission_id int)
+returns table (
+    sample_name text,
+    local_db_id int,
+    public_db_id int,
+    entity_type_id int,
+    json_data_values json)
+as $$
+    declare
+        v_category_sql text;
+        v_source_sql text;
+        v_typed_fields text;
+        v_field_names text;
+        v_column_names text;
+        v_sql text;
+begin
+    v_category_sql = '
+        select distinct name
+        from clearing_house.view_ceramics_lookup
+        order by name
+    ';
+    v_source_sql = format('
+        select	sample_name,                                            -- row_name
                 local_db_id, public_db_id, entity_type_id,              -- extra_columns
-				lookup_name,                                            -- category
-				ARRAY[lookup_name, ''text'', max(measurement_value), max(public_measurement_value)] as measurement_value
-		FROM clearing_house.fn_clearinghouse_review_dataset_ceramic_values_client_data(%s, null) c
-		WHERE TRUE
-		GROUP BY sample_name, local_db_id, public_db_id, entity_type_id, lookup_name
-		ORDER BY sample_name, lookup_name
-	', p_submission_id);
+                lookup_name,                                            -- category
+                ARRAY[lookup_name, ''text'', max(measurement_value), max(public_measurement_value)] as measurement_value
+        from clearing_house.fn_clearinghouse_review_dataset_ceramic_values_client_data(%s, null) c
+        where true
+        group by sample_name, local_db_id, public_db_id, entity_type_id, lookup_name
+        order by sample_name, lookup_name
+    ', p_submission_id);
 
-	SELECT string_agg(format('%I text[]', name), ', ' order by name) as typed_fields,
-		   string_agg(format('ARRAY[%L, ''local'', ''public'']', name), ', ' order by name) AS column_names
-	INTO v_typed_fields, v_field_names, v_column_names
-	FROM clearing_house.tbl_ceramics_lookup;
+    select string_agg(format('%I text[]', name), ', ' order by name) as typed_fields,
+           string_agg(format('ARRAY[%L, ''local'', ''public'']', name), ', ' order by name) AS column_names
+    into v_typed_fields, v_field_names, v_column_names
+    from clearing_house.view_ceramics_lookup;
 
-    IF v_column_names IS NULL THEN
+    if v_column_names is null then
 
-        RETURN QUERY
-            SELECT *
-            FROM (VALUES (null::text, null::int, null::int, null::int, null::json)) AS V
-            WHERE FALSE;
+        return query
+            select *
+            from (values (null::text, null::int, null::int, null::int, null::json)) as v
+            where false;
 
-    ELSE
+    else
 
-        SELECT format('
-            SELECT sample_name, local_db_id, public_db_id, entity_type_id, array_to_json(ARRAY[%s]) AS json_data_values
-            FROM crosstab(%L, %L) AS ct(sample_name text, local_db_id int, public_db_id int, entity_type_id int, %s)',
+        select format('
+            select sample_name, local_db_id, public_db_id, entity_type_id, array_to_json(ARRAY[%s]) AS json_data_values
+            from crosstab(%L, %L) AS ct(sample_name text, local_db_id int, public_db_id int, entity_type_id int, %s)',
                       v_column_names, v_source_sql, v_category_sql, v_typed_fields)
-        INTO v_sql;
+        into v_sql;
 
-        RETURN QUERY EXECUTE v_sql;
+        return query execute v_sql;
 
-    END IF;
+    end if;
 
-END
-$$ LANGUAGE 'plpgsql';
+end
+$$ language 'plpgsql';
