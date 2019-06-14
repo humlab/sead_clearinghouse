@@ -5,28 +5,44 @@
   "main": "public/js/main.js",
   "private": true,
   "scripts": {
+
     "clean:all": "npm cache clean && rimraf -- public/*",
     "clean": "mkdirp public && rimraf public/* && mkdirp public/upload",
-    "copy:api:deprecated": "rimraf -- public/api && cpr src/api public/api",
+
+    "copy:api": "rimraf -- public/api && cpr src/api public/api",
     "copy:vendor": "rimraf -- public/vendor && cpr src/vendor public/vendor",
+
     "composer:fetch": "npx curl -q --output ./src/composer.phar https://getcomposer.org/composer.phar",
-    "composer:install": "cd src && npm run composer:fetch && npx php ./composer.phar install && cd ..",
-    "copy:clean:deprecated": "npm run clean && npm run copy:api && npm run copy:vendor",
+    "composer:install": "cd src && npm run composer:fetch && npx php ./composer.phar install && cd .. && npm run update:autoload",
+    "composer:update": "cd src && npx php ./composer.phar update && cd ..",
+
+    "copy:clean:api": "npm run clean && npm run copy:api && npm run copy:vendor",
     "copy:clean": "npm run clean && npm run copy:vendor",
-    "update:autoload": "cd src && composer dump-autoload -o && cd ..",
+
+    "update:autoload": "cd src && npx php ./composer.phar dump-autoload -o && cd ..",
+
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "npm run copy:clean && npx webpack --config webpack.config.js --mode development --no-color --watch",
-    "start:js:dev": "npx webpack --config webpack.config.js --mode development --no-color --watch",
-    "build:dev": "npm run copy:clean && npx webpack --mode development --config webpack.config.js --no-color",
+
+    "dev:clean:server": "npm run copy:clean && npm run dev:server",
+    "dev:server": "webpack-dev-server --config webpack.config.js --mode development --progress --color --watch",
+
+    "build:watch": "npm run copy:clean && npx webpack --mode development --config webpack.config.js --no-color --watch",
+    "build:dev": "npm run copy:clean:api && npx webpack --mode development --config webpack.config.js --no-color",
     "build:release": "npm run copy:clean && npx webpack --mode production --config webpack.config.js --no-color && npm run dist:build",
     "build:clean-db": "cd sql && bash 'install_clearinghouse_database.bash'",
+
     "docker:build": "cd docker && docker build --rm -f Dockerfile -t clearinghouse/app:latest .",
     "docker:clean:build": "cd docker && docker build --no-cache --rm -f Dockerfile -t clearinghouse/app:latest .",
+
     "dist:build": "npm run dist:setup && npm run dist:copy && npm run dist:zip && npm run dist:rm",
     "dist:setup": "mkdirp dist && rimraf dist/*",
     "dist:copy": "cpr public dist/public && cpr docker dist/docker && cp docker/*.bash dist/",
     "dist:zip": "cd dist && bestzip bundle.zip public docker && cd ..",
-    "dist:rm": "rimraf dist/public dist/docker"
+    "dist:rm": "rimraf dist/public dist/docker",
+
+    "phpunit:fetch": "npx curl -q --output ./src/phpunit.phar https://phar.phpunit.de/phpunit-8.1.phar",
+    "phpunit:install": "cd src && npm run composer:fetch &&  && cd .."
+
   },
   "repository": {
     "type": "git",
@@ -67,6 +83,7 @@
     "url-loader": "^1.1.2",
     "webpack": "^4.32.2",
     "webpack-cli": "^3.3.2",
+    "webpack-dev-server": "^3.7.1",
     "zip-webpack-plugin": "^3.0.0"
   },
   "dependencies": {

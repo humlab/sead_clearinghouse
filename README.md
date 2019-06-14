@@ -12,6 +12,12 @@ What things you need to install the software and how to install them
 - Docker
 ```
 #### Setup development environment
+
+##### Build and run development PHP-server (Docker image)
+```
+% docker build --file dev.Dockerfile -t ch/dev:latest .
+% sead_clearing_house>docker run --rm --env-file .docker.env -p 88:88 -p 9000:9000 -v C:\Users\roma0050\Documents\Projects\SEAD\sead_clearing_house:/home ch/dev:latest
+```
 Clone the project from source.
 ```bash
 git clone https://github.com/humlab/sead_clearinghouse.git
@@ -30,13 +36,13 @@ xdebug.remote_autostart = 1
 xdebug.remote_port = 9000
 xdebug.profiler_output_dir="path-to-temp"
 ```
-- Add file `.pgpass.env` with DB credentials (or set environment variables)
+- Add file `.clearinghouse.env` with DB credentials (or set environment variables)
 ```
-CH_HOST=some.host
-CH_PORT=5432
-CH_DATABASE=sead_staging_somthing
-CH_USER=a_clearinghouse_worker
-CH_PASSWORD=qwerty
+CH_HOST=database-server
+CH_PORT=port
+CH_DATABASE=database
+CH_USER=username
+CH_PASSWORD=password
 ```
 
 #### Setup the clearinghouse database
@@ -47,8 +53,21 @@ Follow instructions in `sql/README`. `npm run build:clean-db` does a clean indta
 Download latest [Dockerfile](https://github.com/humlab-sead/sead_clearinghouse/raw/master/Dockerfile) (into an empty folder) and build the image from the same folder.
 ```
 wget https://github.com/humlab-sead/sead_clearinghouse/raw/master/Dockerfile
+```
+Build from scratch using master branch:
+```
 docker build --no-cache -t clearinghouse/app:latest .
 ```
+Build from specific branch:
+```
+docker build --build-arg source_branch=branch-name -t clearinghouse/app:latest .
+```
+Docker will also build from source in current diectory if folder `./src`is present::
+```
+git clone --branch branch-name --single-branch https://github.com/humlab/sead_clearinghouse.git
+docker build -t clearinghouse/app:latest .
+```
+
 ### Bundled web from source
 Compile and bundle the entire web application using `npm`:
 ```
@@ -61,11 +80,27 @@ Bundled files are stored in `./public` and is a ready to be deployed web (`./dis
 
 ### Docker image (preferred)
 ```bash
-docker run --rm -d -t clearinghouse/app:latest --env-file .docker-env -p 8060:8060
+sudo docker run --rm --env-file ~/vault/.clearinghouse.env --detach --publish 8060:8060 clearinghouse/app:latest
 ```
-### Bundled source files
+### Bundled source files (deprecated)
 1. Copy `./public` folder to target server.
 2. Run `start_clearinghouse.bash --build`
+
+## Test
+
+Install [PHPUnit](https://phpunit.de) as described in `https://phpunit.de`.
+
+```bash
+$ wget https://phar.phpunit.de/phpunit-x.y.phar
+$ chmod +x phpunit-x.y.phar
+$ sudo mv phpunit-x.y.phar /usr/local/bin/phpunit
+$ phpunit --version
+```
+For windows
+1. Download https://phar.phpunit.de/phpunit-x.y.phar and save the file as phpunit.phar in a folder that exists in PATH.
+2. Create `phpunit.cmd` as `echo @php "%~dp0phpunit.phar" %* > phpunit.cmd` (absolute path to php if php not in PATH)
+$ phpunit --version
+```
 
 ## Built With
 

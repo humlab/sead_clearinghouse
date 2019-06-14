@@ -2,9 +2,37 @@
 const path = require('path');
 const webpack = require('webpack');
 const HtmlPlugin = require("html-webpack-plugin");
-const copyPlugin = require('copy-webpack-plugin');
 
-const target = "dev";
+//const copyPlugin = require('copy-webpack-plugin');
+//const target = "dev";
+
+//const PORT = 8060;
+const PROXY_TARGET_API = null; // "http://localhost:88/"
+
+const resolve = directory => path.resolve(__dirname, directory);
+
+var devServerConfig = null;
+
+if (PROXY_TARGET_API !== null) {
+    devServerConfig = {
+
+        contentBase: resolve('public'),
+        hot: true,
+        port: 8080,
+        allowedHosts: ['localhost'],
+        //publicPath: resolve('public'),
+        proxy: {
+            '/api': {
+                target: "http://localhost:88/",
+                secure: false
+            }
+        }
+    }
+} else {
+    devServerConfig = {
+        publicPath: path.join('/public/')
+    };
+}
 
 module.exports = {
     entry: path.join(__dirname, 'src/js/main.js'),
@@ -103,7 +131,7 @@ module.exports = {
         }
     },
     devtool: 'source-map',
-    devServer: {
-        publicPath: path.join('/public/')
-    }
+    devServer: devServerConfig
 };
+
+
