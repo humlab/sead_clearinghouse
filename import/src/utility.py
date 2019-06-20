@@ -41,12 +41,17 @@ def flatten_sets(x, y):
     return set(list(x) + list(y))
 
 def tidy_xml(path, suffix='_tidy'):
-    tidy_path = path[:-4] + '{}.xml'.format(suffix)
-    with io.open(path, 'r', encoding='utf8') as instream:
-        xml_document = instream.read()
-    tidy_xml_document = tidylib.tidy_document(xml_document, {"input_xml": True})[0]
-    with io.open(tidy_path, 'w', encoding='utf8') as outstream:
-        outstream.write(tidy_xml_document)
+    try:
+        tidy_path = path[:-4] + '{}.xml'.format(suffix)
+        with io.open(path, 'r', encoding='utf8') as instream:
+            xml_document = instream.read()
+        tidy_xml_document = tidylib.tidy_document(xml_document, {"input_xml": True})[0]
+        with io.open(tidy_path, 'w', encoding='utf8') as outstream:
+            outstream.write(tidy_xml_document)
+    except OSError as ex:
+        print("fatal: Tidy XML failed. Is tidy installed? (sudo apt-get install tidy)")
+        return path
+
     return tidy_path
 
 def compress_and_encode(path):

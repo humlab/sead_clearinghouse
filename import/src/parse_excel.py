@@ -221,17 +221,17 @@ def process_excel_to_xml(option, basename, timestamp):
     Reads Excel files and convert content to an CH XML-file.
     Stores data in output_filename and returns filename for a cleaned up version of the XML
     '''
-    meta_filename = jj(option['input_folder'], option['meta_filename'])
-    data_filename = jj(option['input_folder'], option['data_filename'])
-    output_filename = jj(option['output_folder'], '{}_{}.xml'.format(basename, timestamp))
-
+    meta_filename = jj(option.input_folder, option.meta_filename)
+    data_filename = jj(option.input_folder, option.data_filename)
+    output_filename = jj(option.output_folder, '{}_{}.xml'.format(basename, timestamp))
+    
     meta_data = MetaData().load(meta_filename)
 
     data = ValueData(meta_data).load(data_filename)
 
     with io.open(output_filename, 'w', encoding='utf8') as outstream:
         service = XmlProcessor(outstream)
-        service.process(data, option['table_names'])
+        service.process(data, option.table_names)
 
     tidy_output_filename = tidy_xml(output_filename)
 
