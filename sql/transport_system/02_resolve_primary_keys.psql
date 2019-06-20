@@ -1,0 +1,197 @@
+set session schema 'clearing_house_commit';
+
+/*********************************************************************************************************************************
+**  Function    clearing_house_commit.reset_serial_id
+**  Who         Roger Mähler
+**  When
+**  What        Resets a database sequence given name of schema, table and column
+**  Used By     Transport system, during resolve and assignment of primary keys
+**  Returns     Next serial ID in sequence
+**  Revisions
+**********************************************************************************************************************************/
+
+create or replace function clearing_house_commit.reset_serial_id(
+    p_schema_name character varying,
+    p_table_name character varying,
+    p_column_name character varying
+) returns int as $$
+declare
+    v_sql text = '';
+    v_next_id integer;
+    v_seq_id character varying;
+begin
+
+    if p_table_name not like format('%s.%%', p_schema_name) then
+        p_table_name = format('%s.%s', p_schema_name, p_table_name);
+    end if;
+
+    v_sql = format('select max(%s) from %s', p_column_name, p_table_name);
+
+    execute v_sql into v_next_id;
+
+    v_next_id = coalesce(v_next_id, 1);
+    v_seq_id  = pg_get_serial_sequence(format('%s', p_table_name), p_column_name);
+
+    perform setval(v_seq_id, v_next_id);
+
+    return v_next_id;
+
+end $$ language plpgsql;
+
+/*********************************************************************************************************************************
+**  Function    clearing_house_commit.get_next_id
+**  Who         Roger Mähler
+**  When
+**  What        Returns (and optionally resets) next ID in given sequence
+**  Used By     Transport system, during resolve and assignment of primary keys
+**  Returns     Next serial ID in sequence
+**  Revisions
+**********************************************************************************************************************************/
+
+create or replace function clearing_house_commit.get_next_id(
+    p_schema_name character varying,
+    p_table_name character varying,
+    p_column_name character varying,
+    p_reset_id boolean = FALSE
+) returns int as $$
+declare
+    v_next_id       int = 0;
+    v_sequence_name character varying;
+begin
+
+    if p_reset_id is TRUE then
+        perform clearing_house_commit.reset_serial_id(p_schema_name, p_table_name, p_column_name);
+    end if;
+
+    if p_table_name not like format('%s.%%', p_schema_name) then
+        p_table_name = format('%s.%s', p_schema_name, p_table_name);
+    end if;
+
+    v_sequence_name = pg_get_serial_sequence(p_table_name, p_column_name);
+    v_next_id = nextval(v_sequence_name);
+
+    return v_next_id;
+
+end $$ language plpgsql;
+
+/*********************************************************************************************************************************
+**  Function    clearing_house_commit.resolve_primary_key
+**  Who         Roger Mähler
+**  When
+**  What        Assigns a public ID in field "transport_id" to all records in given table. Type of CRUD op. (C or U)
+**              are stored in field "transport_type".
+**              Existing records are assign "public_db_id", and new records are assigned next ID in sequence.
+**              Note that the serial in the public DB is left untouched (apart from a reset) by this function.
+**  Used By     Transport system, during packaging of a new CH submission transfer
+**  Returns     Next serial ID in sequence
+**  Idempotant  YES
+**  Revisions
+**********************************************************************************************************************************/
+
+create or replace function clearing_house_commit.resolve_primary_key(
+    p_submission_id int,
+    p_table_name character varying,
+    p_next_id integer
+) returns text as $$
+declare v_sql text;
+begin
+    begin
+
+        v_sql = format('
+with new_keys as (
+    select local_db_id, %s + row_number() over (order by local_db_id asc) as new_db_id
+    from clearing_house.%s
+    where submission_id = %s
+        and public_db_id is null
+) update clearing_house.%s
+    set transport_id = case when public_db_id is null then n.new_db_id else public_db_id end,
+        transport_date = now(),
+        transport_type = case when public_db_id is null then ''C'' else ''U'' end
+    from new_keys n
+    where clearing_house.%s.submission_id = %s
+        and clearing_house.%s.local_db_id = n.local_db_id;
+        ', p_next_id - 1, p_table_name, p_submission_id, p_table_name, p_table_name, p_submission_id, p_table_name);
+
+        --raise notice '%', v_sql;
+        return v_sql;
+    exception
+        when sqlstate 'GUARD' then
+            raise notice '%', 'GUARDED';
+    end;
+end;$$ language plpgsql;
+
+/*********************************************************************************************************************************
+**  Function    clearing_house_commit.resolve_primary_keys
+**  Who         Roger Mähler
+**  When
+**  What        Loops through all data tables in a SEAD submission and resolves the primary keys if table has data
+**  Used By     Transport system, during packaging of a new CH submission transfer
+**  Returns     Statistics of affected records
+**  Idempotant  YES
+**  Revisions
+**********************************************************************************************************************************/
+
+create or replace function clearing_house_commit.resolve_primary_keys(
+    p_submission_id int,
+    p_schema_name character varying,
+    p_dry_run boolean
+) returns setof clearing_house_commit.resolve_primary_keys_result as $$
+declare v_schema_name character varying;
+    v_table_name character varying;
+    v_pk_name character varying;
+    v_sql text = '';
+    v_next_id integer;
+    v_count integer;
+    v_row clearing_house_commit.resolve_primary_keys_result%rowtype;
+begin
+    begin
+
+        perform clearing_house_commit.generate_sead_tables();
+
+        for v_table_name, v_pk_name in (
+            select table_name, pk_name
+            from clearing_house_commit.tbl_sead_tables
+            order by 1, 2
+        )
+        loop
+
+            execute format('select count(*) from clearing_house.%s where submission_id = $1', v_table_name)
+                into v_count
+                    using p_submission_id;
+
+            if v_count = 0 then
+                --raise notice 'SKIPPED: % no data', v_table_name;
+                continue;
+            end if;
+
+            v_next_id = clearing_house_commit.get_next_id(p_schema_name, v_table_name, v_pk_name, TRUE);
+
+            raise notice 'UPDATING: % (% rows, using % as first id )', v_table_name, v_count, v_next_id;
+
+            v_sql = clearing_house_commit.resolve_primary_key(p_submission_id, v_table_name, v_next_id);
+
+            if (not p_dry_run) then
+                 execute v_sql;
+            end if;
+
+            v_row.submission_id = p_submission_id;
+            v_row.table_name = v_table_name;
+            v_row.column_name = v_pk_name;
+            v_row.action = 'ASSIGN_PK';
+            v_row.update_sql = v_sql;
+            v_row.row_count = v_count;
+            v_row.start_id = v_next_id;
+            v_row.status_id = 1;
+            v_row.execute_date = now();
+
+            return next v_row;
+
+        end loop;
+
+    exception
+        when sqlstate 'GUARD' then
+            raise notice '%', 'GUARDED';
+    end;
+end;$$ language plpgsql;
+
+

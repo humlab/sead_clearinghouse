@@ -1,0 +1,120 @@
+
+create or replace function clearing_house_commit.generate_copy_out_script(p_submission_id int, p_entity text, p_target_folder text) returns text as $$
+declare v_sql text;
+begin
+
+    -- program ''gzip > %s/submission_%s_%s.zip''
+    v_sql = format('\copy (select * from clearing_house_commit.resolve_%s(%s)) to program ''gzip -qa9 > %s/submission_%s_%s.gz'' with (format text, delimiter E''\t'', encoding ''utf-8'');
+    ',
+        p_entity, p_submission_id, p_target_folder, p_submission_id, p_entity);
+
+    return v_sql;
+
+end $$ language plpgsql;
+
+
+create or replace function clearing_house_commit.generate_copy_in_script(
+    p_submission_id int,
+    p_entity_name text,
+    p_table_name text,
+    p_pk_name text,
+    p_target_folder text = '/tmp'
+) returns text as $$
+declare v_sql text;
+begin
+
+    -- from program ''gunzip < %s/submission_%s_%s.zip''
+    v_sql = E'
+/************************************************************************************************************************************
+ ** #ENTITY#
+ ************************************************************************************************************************************/
+
+do \$\$ begin
+    raise notice ''Deploying %...'', ''#ENTITY#'';
+    drop table if exists clearing_house_commit.temp_#TABLE#;
+    create table clearing_house_commit.temp_#TABLE# as select * from public.#TABLE# where FALSE;
+end \$\$ language plpgsql;
+
+\\copy clearing_house_commit.temp_#TABLE# from program ''zcat -qac #DIR#/submission_#ID#_#ENTITY#.gz'' with (FORMAT text, DELIMITER E''\t'', ENCODING ''utf-8'');
+
+do \$\$ begin
+
+    delete from public.#TABLE#
+        where #PK# in (select #PK# from clearing_house_commit.temp_#TABLE#);
+
+    insert into public.#TABLE#
+        select *
+        from clearing_house_commit.temp_#TABLE#
+        /* on conflict (v_pk_name) update set list-of-all-fields */;
+
+    perform clearing_house_commit.reset_serial_id(''public'', ''#TABLE#'', ''#PK#'');
+
+    drop table if exists clearing_house_commit.temp_#TABLE#;
+
+end \$\$ language plpgsql;
+';
+
+    v_sql = replace(v_sql, '#TABLE#', p_table_name);
+    v_sql = replace(v_sql, '#ID#', p_submission_id::text);
+    v_sql = replace(v_sql, '#ENTITY#', p_entity_name);
+    v_sql = replace(v_sql, '#PK#', p_pk_name);
+    v_sql = replace(v_sql, '#DIR#', p_target_folder);
+    return v_sql;
+
+end $$ language plpgsql;
+
+create or replace function clearing_house_commit.generate_resolved_submission_copy_script(
+    p_submission_id int,
+    p_folder character varying,
+    p_is_out boolean
+) returns text as $xyz$
+declare
+    v_sql character varying;
+    v_table_name character varying;
+    v_entity_name character varying;
+    v_count integer;
+    v_pk_name character varying;
+    v_sort_order integer;
+begin
+    begin
+
+        -- perform clearing_house_commit.generate_resolve_functions('public', FALSE);
+        -- perform clearing_house_commit.resolve_primary_keys(p_submission_id, 'public', FALSE);
+
+        
+        v_sql := '';
+
+        for v_table_name, v_pk_name, v_entity_name, v_sort_order in (
+            select distinct t.table_name, t.pk_name, t.entity_name, coalesce(x.sort_order, 999)
+            from clearing_house_commit.tbl_sead_tables t
+            left join clearing_house_commit.sorted_table_names() x
+              on x.table_name = t.table_name
+            order by 4 asc
+        )
+        loop
+
+            execute format('select count(*) from clearing_house.%s where submission_id = $1', v_table_name)
+                into v_count
+                    using p_submission_id;
+
+            if v_count = 0 then
+                -- raise notice 'SKIPPED: % no data', v_table_name;
+                continue;
+            end if;
+
+            if p_is_out then
+                v_sql = v_sql || E'\n' || clearing_house_commit.generate_copy_out_script(p_submission_id, v_entity_name, p_folder);
+            else
+                v_sql = v_sql || E'\n' || clearing_house_commit.generate_copy_in_script(p_submission_id, v_entity_name, v_table_name, v_pk_name, p_folder) || E'\n';
+            end if;
+
+        end loop;
+
+    end;
+
+    return v_sql;
+
+end $xyz$ language plpgsql;
+
+
+
