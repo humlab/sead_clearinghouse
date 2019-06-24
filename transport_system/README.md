@@ -25,4 +25,4 @@ The installation creates (or recreates) schema `clearing_house_commit' consistin
 
 ## How to execute
 
-
+    ./sqitch.sh add --change-name ${crid} --note "Deploy of Clearinghouse submission {$submission_id}." -C ./${ccs_project}
