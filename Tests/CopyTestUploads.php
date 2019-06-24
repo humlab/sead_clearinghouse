@@ -1,7 +1,7 @@
 <?php
 
 namespace Test {
-    
+
     class CopyTestUploads {
 
         public function copyData()
@@ -14,12 +14,12 @@ namespace Test {
                 "password" => "rogerHumlab",
                 "database" => "sead_master6_testing")
             );
-            
+
             $db2 = \InfraStructure\ConnectionFactory::CreateDefault();
 
-            $data = $db1->fetch_all("select * From metainformation.tbl_upload_contents where upload_content_id = 81", null);
+            $data = $db1->fetch_all("select * From xxx.tbl_upload_contents where upload_content_id = 81", null);
 
-            $stmt = $db2->prepare("Insert Into clearing_house.tbl_clearinghouse_submissions (upload_user_id, submission_state_id, data_types, upload_date, upload_content, xml) Values (:upload_user_id, :submission_state_id, :data_types, :upload_date, :upload_content, null)");   
+            $stmt = $db2->prepare("Insert Into clearing_house.tbl_clearinghouse_submissions (upload_user_id, submission_state_id, data_types, upload_date, upload_content, xml) Values (:upload_user_id, :submission_state_id, :data_types, :upload_date, :upload_content, null)");
 
             foreach ($data as $row) {
 
@@ -42,6 +42,6 @@ namespace Test {
             echo "...done!";
 
         }
-    }   
+    }
 }
 ?>
