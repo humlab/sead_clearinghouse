@@ -8,7 +8,7 @@ RUN apt-get update && \
 
 RUN git clone //github.com/humlab-sead/sead_clearinghouse.git && \
     mv sead_clearinghouse/import/* . && \
-    rm -rf sead_clearinghouse import \
+    rm -rf sead_clearinghouse import && \
     mkdir ./input && \
     mkdir ./output && \
     pip install --no-cache-dir -r requirements.txt
