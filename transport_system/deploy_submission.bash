@@ -119,10 +119,12 @@ function generate_deploy() {
     echo "***************************************************************************/" >> $target_folder/${crid}.sql
 
     #echo "BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;"                             >> $target_folder/${crid}.sql
-    echo "set constraints all deferred;"                                                >> $target_folder/${crid}.sql
+    echo "--set constraints all deferred;"                                                >> $target_folder/${crid}.sql
     echo "set client_min_messages to warning;"                                          >> $target_folder/${crid}.sql
     echo "-- set autocommit off;"                                                       >> $target_folder/${crid}.sql
     echo "-- begin;"                                                                    >> $target_folder/${crid}.sql
+
+    echo "\cd deploy"                                                                   >> $target_folder/${crid}.sql
 
     dbexec -c "\copy (select * from clearing_house_commit.generate_resolved_submission_copy_script($submission_id, '$target_folder', false)) to STDOUT; " \
         | sed  -e 's/\\n/\n/g' -e 's/\\r/\r/g' -e 's/\\\\/\\/g'                         >> $target_folder/${crid}.sql
