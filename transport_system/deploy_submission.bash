@@ -16,12 +16,21 @@ target_folder=
 force=0
 add_ccs_task=NO
 deploy_ccs_task=NO
-deploy_target=
 #sqitch_project_folder=$HOME/source/sead_change_control
 sqitch_project_folder=`pwd`/sead_change_control
 sqitch_command=${sqitch_project_folder}/sqitch.sh
 ccs_project=general
 script_folder=`pwd`
+
+function usage() {
+    echo "usage: $script_name [--dbhost=target-server] [--port=port] [--dbname=target-database] --id=x [--force] [--add-ccs-task] "
+    echo "       advanced option: [--target-folder=dir]  [--deploy-ccs-task] "
+    echo ""
+    echo "       --force                Force overwrite of existing target folder if exists"
+    echo "       --target-folder=dir    Override default target dir (not recommended)"
+    echo "       --deploy-css-task      Does an actually deploy via the CCS system ton specified server and database"
+    exit 64
+}
 
 for i in "$@"; do
     case $i in
@@ -31,9 +40,9 @@ for i in "$@"; do
             dbport="${i#*=}"; shift ;;
         -d=*|--dbname=*)
             dbname="${i#*=}"; shift ;;
-        -u=*|--dbuser=*)
+        -U=*|--dbuser=*)
             dbuser="${i#*=}"; shift ;;
-        -s=*|--submission-id=*)
+        -s=*|--id=*|--submission-id=*)
             submission_id="${i#*=}"; shift ;;
         -t=*|--target-folder=*)
             target_folder="${i#*=}"; shift ;;
@@ -43,9 +52,10 @@ for i in "$@"; do
             add_ccs_task="YES"; shift ;;
         -x|--deploy-ccs-task)
             deploy_ccs_task="YES"; shift ;;
-        -y=*|--deploy-target=*)
-            deploy_target="${i#*=}"; shift ;;
-       *);;
+       *)
+        echo "unknown option: $i"
+        usage
+       ;;
     esac
 done
 
@@ -60,10 +70,6 @@ function dbexec() {
     fi
 }
 
-function usage() {
-    echo "usage: $script_name [--dbhost=target-server] [--port=port] [--dbname=target-database] --submission-id=x [--target-folder=dir] [--force] [--add-ccs-task [--deploy-ccs-task --deploy-target=target]]; "
-    exit 64
-}
 
 function get_datatype() {
     dt_sql="select min(data_types) from clearing_house.tbl_clearinghouse_submissions where submission_id = $submission_id"
@@ -71,7 +77,6 @@ function get_datatype() {
     dt_x=${dt_x/ /_}
     echo "$dt_x"
 }
-
 function get_cr_id() {
     day=$(date +%Y%m%d)
     zid=`printf "%03d" ${submission_id}`
@@ -209,6 +214,13 @@ fi
 if [ "$dbname" == "" ]; then
     usage ;
 fi
+
+if [ "`get_datatype`" == "" ]; then
+    echo "failure: submission not found or it has no data type specified."
+    exit 64
+fi
+
+echo "Submission type: `get_datatype` "
 
 if [ "$target_folder" == "" ]; then
     target_folder=`get_cr_id`

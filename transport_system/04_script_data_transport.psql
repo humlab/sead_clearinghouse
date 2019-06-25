@@ -81,7 +81,7 @@ begin
         -- perform clearing_house_commit.generate_resolve_functions('public', FALSE);
         -- perform clearing_house_commit.resolve_primary_keys(p_submission_id, 'public', FALSE);
 
-        
+
         v_sql := '';
 
         for v_table_name, v_pk_name, v_entity_name, v_sort_order in (
