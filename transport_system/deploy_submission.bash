@@ -16,9 +16,10 @@ target_folder=
 force=0
 add_ccs_task=NO
 deploy_ccs_task=NO
+deploy_ccs_task_target=
 #sqitch_project_folder=$HOME/source/sead_change_control
 sqitch_project_folder=`pwd`/sead_change_control
-sqitch_command=${sqitch_project_folder}/sqitch.sh
+sqitch_command=~/bin/sqitch
 ccs_project=general
 script_folder=`pwd`
 
@@ -52,6 +53,8 @@ for i in "$@"; do
             add_ccs_task="YES"; shift ;;
         -x|--deploy-ccs-task)
             deploy_ccs_task="YES"; shift ;;
+        --deploy-target=*)
+            deploy_ccs_task_target="${i#*=}"; shift ;;
        *)
         echo "unknown option: $i"
         usage
@@ -124,7 +127,8 @@ function generate_deploy() {
     echo "-- set autocommit off;"                                                       >> $target_folder/${crid}.sql
     echo "-- begin;"                                                                    >> $target_folder/${crid}.sql
 
-    echo "\cd deploy"                                                                   >> $target_folder/${crid}.sql
+    # FIXME: relative cd should be enough /repo assumes docker-sqitch
+    echo "\cd /repo/general/deploy"                                                     >> $target_folder/${crid}.sql
 
     dbexec -c "\copy (select * from clearing_house_commit.generate_resolved_submission_copy_script($submission_id, '$target_folder', false)) to STDOUT; " \
         | sed  -e 's/\\n/\n/g' -e 's/\\r/\r/g' -e 's/\\\\/\\/g'                         >> $target_folder/${crid}.sql
@@ -167,8 +171,8 @@ function add_ccs_task()
         exit 64
     fi
 
-    if [ ! -f $sqitch_project_folder/sqitch.sh ] && [ ! hash sqitch 2>/dev/null ]; then
-        echo "failure: cannot add ccs task since default sqitch project folder $sqitch_project_folder is missing"
+    if [ ! -x $sqitch_command ] && [ ! hash $sqitch_command 2>/dev/null ]; then
+        echo "failure: sqitch command not found. expected $sqitch_command"
         exit 64
     fi
 
@@ -194,9 +198,9 @@ function add_ccs_task()
         exit 64
     fi
 
-    chmod +x ./sqitch.sh
+    chmod +x $sqitch_command
 
-    ./sqitch.sh add --change-name ${crid} --note "Deploy of Clearinghouse submission {$submission_id}." -C ./${ccs_project}
+    $sqitch_command add --change-name ${crid} --note "Deploy of Clearinghouse submission {$submission_id}." -C ./${ccs_project}
 
     if [ $? -ne 0 ];  then
         echo "fatal: sqitch add command failed." >&2
@@ -207,6 +211,13 @@ function add_ccs_task()
     cp -f $target_folder/${crid}.sql $target_deploy_file
     mv $target_folder $sqitch_project_folder/${ccs_project}/deploy
 
+}
+
+function deploy_ccs_task()
+{
+    crid=`get_cr_id`
+    echo "NOTICE: Deploying CCS task ${crid} to ${deploy_ccs_task_target}..."
+    $sqitch_command deploy --target $deploy_ccs_task_target -C ./${ccs_project} ${crid}
 }
 
 if [ "$submission_id" == "0" ]; then
@@ -235,6 +246,11 @@ fi
 
 if [ "$add_ccs_task" == "NO" ] && [ "$deploy_ccs_task" == "YES" ]; then
     echo "usage: deploy can *only* be done in conjunction with ccs task creation (--add-ccs-task=YES --deploy-ccs-task=YES)"
+    usage
+fi
+
+if [ "$deploy_ccs_task_target" == "" ] && [ "$deploy_ccs_task" == "YES" ]; then
+    echo "usage: deploy sqitch deploy taget must be specified (--deploy-target)"
     usage
 fi
 
