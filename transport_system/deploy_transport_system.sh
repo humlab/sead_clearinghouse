@@ -77,6 +77,7 @@ function generate_change_request() {
 
     crid=`get_cr_id`
 
+    echo ""                                                                              > $target_folder/${crid}.sql
     echo "/***************************************************************************" >> $target_folder/${crid}.sql
     echo "Author         $USER"                                                         >> $target_folder/${crid}.sql
     echo "Date           $day"                                                          >> $target_folder/${crid}.sql
@@ -98,11 +99,8 @@ function generate_change_request() {
     cat ./03_resolve_foreign_keys.psql                                                  >> $target_folder/${crid}.sql
     cat ./04_script_data_transport.psql                                                 >> $target_folder/${crid}.sql
 
-    echo "\$\$"                                                                         >> $target_folder/${crid}.sql
-    echo "begin"                                                                        >> $target_folder/${crid}.sql
-    echo "  perform clearing_house_commit.generate_sead_tables();"                      >> $target_folder/${crid}.sql
-    echo "  perform clearing_house_commit.generate_resolve_functions('public', false);" >> $target_folder/${crid}.sql
-    echo "end \$\$ language plpgsql;"                                                   >> $target_folder/${crid}.sql
+    echo "select clearing_house_commit.generate_sead_tables();"                         >> $target_folder/${crid}.sql
+    echo "select clearing_house_commit.generate_resolve_functions('public', false);"    >> $target_folder/${crid}.sql
 
 	echo "-- commit;"                                                                   >> $target_folder/${crid}.sql
 
@@ -169,10 +167,6 @@ function deploy_change_request_to_target()
     echo "notice: deploying change request to ${crid} to ${deploy_target}..."
     $sqitch_command deploy --target $deploy_target -C ./${target_project} ${crid}
 }
-
-if [ "$submission_id" == "0" ]; then
-    usage ;
-fi
 
 if [ "$target_folder" == "" ]; then
     target_folder=`get_cr_id`
