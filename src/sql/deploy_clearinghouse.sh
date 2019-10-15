@@ -134,7 +134,7 @@ function add_change_request_to_change_control_system()
         exit 64
     fi
 
-    if [ == "YES" ]; then
+    if [ "$add_to_git_clone" == "YES" ]; then
         echo "warning: cloning temporary git repo"
         rm -rf ./sead_change_control
         git clone https://github.com/humlab-sead/sead_change_control.git
