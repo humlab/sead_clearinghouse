@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 set -e  # Exit script on any error
@@ -14,22 +13,22 @@ dbname=sead_staging_tng
 submission_id=0
 target_folder=
 force=0
-add_ccs_task=NO
-deploy_ccs_task=NO
-deploy_ccs_task_target=
-#sqitch_project_folder=$HOME/source/sead_change_control
-sqitch_project_folder=`pwd`/sead_change_control
-sqitch_command=~/bin/sqitch
-ccs_project=general
-script_folder=`pwd`
+do_add_change_request=NO
+do_deploy_change_request=NO
+deploy_target=
+change_request_repository=$HOME/source/sead_change_control
+#change_request_repository=`pwd`/sead_change_control
+sqitch_command=./docker-sqitch.sh
+target_project=general
 
 function usage() {
-    echo "usage: $script_name [--dbhost=target-server] [--port=port] [--dbname=target-database] --id=x [--force] [--add-ccs-task] "
-    echo "       advanced option: [--target-folder=dir]  [--deploy-ccs-task] "
+    echo "usage: $script_name [--dbhost=target-server] [--port=port] [--dbname=target-database] --id=x [--force] [--add-change-request] "
+    echo "       advanced option: [--target-folder=dir]  [--deploy-change-request --deploy-target=target]"
     echo ""
-    echo "       --force                Force overwrite of existing target folder if exists"
-    echo "       --target-folder=dir    Override default target dir (not recommended)"
-    echo "       --deploy-css-task      Does an actually deploy via the CCS system ton specified server and database"
+    echo "       --force                    Force overwrite of existing target folder if exists"
+    echo "       --target-folder=dir        Override default target dir (not recommended)"
+    echo "       --deploy-change-request    Deploy change request to server and database specified by --deploy-target via the CCS system "
+    echo "       --deploy-target=target     Target database as defined in sqitch.conf"
     exit 64
 }
 
@@ -49,12 +48,12 @@ for i in "$@"; do
             target_folder="${i#*=}"; shift ;;
         -f|--force)
             force=1; shift ;;
-        -a|--add-ccs-task)
-            add_ccs_task="YES"; shift ;;
-        -x|--deploy-ccs-task)
-            deploy_ccs_task="YES"; shift ;;
+        -a|--add-change-request)
+            do_add_change_request="YES"; shift ;;
+        -x|--deploy-change-request)
+            do_deploy_change_request="YES"; shift ;;
         --deploy-target=*)
-            deploy_ccs_task_target="${i#*=}"; shift ;;
+            deploy_target="${i#*=}"; shift ;;
        *)
         echo "unknown option: $i"
         usage
@@ -72,7 +71,6 @@ function dbexec() {
         exit 64
     fi
 }
-
 
 function get_datatype() {
     dt_sql="select min(data_types) from clearing_house.tbl_clearinghouse_submissions where submission_id = $submission_id"
@@ -147,27 +145,23 @@ function execute_deploy()
     dbexec -f $script
 }
 
-function add_ccs_task()
+function add_change_request_to_repository()
 {
-    echo "NOTICE: Adding CCS task to ${sqitch_project_folder}..."
+    echo "NOTICE: Adding CCS task to ${change_request_repository}..."
     crid=`get_cr_id`
 
-    echo "WARNING! Cloning temporary git repo"
-    rm -rf ./sead_change_control
-    git clone https://github.com/humlab-sead/sead_change_control.git
+    #echo "WARNING! Cloning temporary git repo"
+    #rm -rf ./sead_change_control
+    #git clone https://github.com/humlab-sead/sead_change_control.git
 
     if [ ! -f $target_folder/${crid}.sql ]; then
         echo "failure: cannot add ccs task since $target_folder/${crid}.sql is missing"
         exit 64
     fi
 
-    if [ ! -f $target_folder/${crid}.sql ]; then
-        echo "usage: cannot add ccs task since $target_folder/${crid}.sql is missing"
-        exit 64
-    fi
-
-    if [ ! -d $sqitch_project_folder ]; then
-        echo "failure: cannot add ccs task since default sqitch project folder $sqitch_project_folder is missing"
+    if [ ! -d $change_request_repository ]; then
+        echo "failure: cannot add change request since SEAD change control system folder $sead_ccs_folder is missing."
+        echo "         please checkout system to this folder, or change location using."
         exit 64
     fi
 
@@ -176,22 +170,23 @@ function add_ccs_task()
         exit 64
     fi
 
-    c_folder=`pwd`
+    current_folder=`pwd`
     #absolute_source_folder=$target_folder
     #if [[ ! "$absolute_source_folder" = /* ]]; then
     #    absolute_source_folder=`pwd`/$absolute_source_folder
     #fi
     #source_deploy_file=$absolute_source_folder/${crid}.sql
 
-    cd $sqitch_project_folder
-    git pull
+    cd $change_request_repository
 
-    if [ $? -ne 0 ];  then
-        echo "fatal: git pull of git source failed." >&2
-        exit 64
-    fi
+    #git pull
 
-    target_deploy_file=$sqitch_project_folder/${ccs_project}/deploy/${crid}.sql
+    # if [ $? -ne 0 ];  then
+    #     echo "fatal: git pull of git source failed." >&2
+    #     exit 64
+    # fi
+
+    target_deploy_file=$sead_ccs_folder/${target_project}/deploy/${crid}.sql
 
     if [ -f $target_deploy_file ]; then
         echo "failure: ccs task ${crid}.sql already exists (cannot resolve conflict)"
@@ -200,24 +195,24 @@ function add_ccs_task()
 
     chmod +x $sqitch_command
 
-    $sqitch_command add --change-name ${crid} --note "Deploy of Clearinghouse submission {$submission_id}." -C ./${ccs_project}
+    $sqitch_command add --change-name ${crid} --note "Deploy of Clearinghouse submission {$submission_id}." -C ./${target_project}
 
     if [ $? -ne 0 ];  then
         echo "fatal: sqitch add command failed." >&2
         exit 64
     fi
 
-    cd $c_folder
+    cd $current_folder
     cp -f $target_folder/${crid}.sql $target_deploy_file
-    mv $target_folder $sqitch_project_folder/${ccs_project}/deploy
+    mv $target_folder $sead_ccs_folder/${target_project}/deploy
 
 }
 
-function deploy_ccs_task()
+function deploy_change_request_to_staging()
 {
     crid=`get_cr_id`
-    echo "NOTICE: Deploying CCS task ${crid} to ${deploy_ccs_task_target}..."
-    $sqitch_command deploy --target $deploy_ccs_task_target -C ./${ccs_project} ${crid}
+    echo "NOTICE: Adding CCS task ${crid} to ${deploy_target}..."
+    $sqitch_command deploy --target $deploy_target -C ./${target_project} ${crid}
 }
 
 if [ "$submission_id" == "0" ]; then
@@ -244,13 +239,13 @@ if [ "$target_folder" == "" ]; then
     usage ;
 fi
 
-if [ "$add_ccs_task" == "NO" ] && [ "$deploy_ccs_task" == "YES" ]; then
+if [ "$do_add_change_request" == "NO" ] && [ "$do_deploy_change_request" == "YES" ]; then
     echo "usage: deploy can *only* be done in conjunction with ccs task creation (--add-ccs-task=YES --deploy-ccs-task=YES)"
     usage
 fi
 
-if [ "$deploy_ccs_task_target" == "" ] && [ "$deploy_ccs_task" == "YES" ]; then
-    echo "usage: deploy sqitch deploy taget must be specified (--deploy-target)"
+if [ "$deploy_target" == "" ] && [ "$do_deploy_change_request" == "YES" ]; then
+    echo "usage: sqitch deploy taget must be specified (--deploy-target)"
     usage
 fi
 
@@ -270,14 +265,12 @@ mkdir -p $target_folder
 generate_data
 generate_deploy
 
-echo "$add_ccs_task"
+if [ "$do_add_change_request" == "YES" ]; then
 
-if [ "$add_ccs_task" == "YES" ]; then
+    add_change_request_to_repository
 
-    add_ccs_task
-
-    if [ "$deploy_ccs_task" == "YES" ]; then
-        deploy_ccs_task
+    if [ "$do_deploy_change_request" == "YES" ]; then
+        deploy_change_request_to_staging
     fi
 
 fi

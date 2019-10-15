@@ -31,6 +31,9 @@ done
 
 function usage() {
     echo "usage: $script_name [--dbhost=target-server] [--port=port] [--dbname=target-database]"
+    echo "       Please note that this script deploys the system  directly to the target DB."
+    echo "       Use this only for testing. Proper install should be carried out by the SEAD CCS."
+    echo "       Use ./deploy_transport_system.sh to create a change request in SEAD CCS."
     exit 64
 }
 
@@ -46,21 +49,7 @@ function check_install_options() {
 }
 
 function install_transport_system() {
-    psql --host=$dbhost --port=$dbport --username=$dbuser --dbname=$dbname --no-password -q -1 -v ON_ERROR_STOP=1 <<EOF
-
-        set client_min_messages to warning;
-
-        \i '01_setup_transport_schema.psql'
-        \i '02_resolve_primary_keys.psql'
-        \i '03_resolve_foreign_keys.psql'
-        \i '04_script_data_transport.psql'
-
-        do \$\$
-        begin
-            perform clearing_house_commit.generate_sead_tables();
-            perform clearing_house_commit.generate_resolve_functions('public', false);
-        end \$\$ language plpgsql;
-EOF
+    psql --host=$dbhost --port=$dbport --username=$dbuser --dbname=$dbname --no-password -q -1 -v ON_ERROR_STOP=1 --file ./05_install_transport_system.sql
 }
 
 echo "Deploying SEAD Clearinghouse transport system using URI $dbuser@$dbhost:$dbport/$dbname"
