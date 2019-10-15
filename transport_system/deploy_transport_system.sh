@@ -22,7 +22,7 @@ function usage() {
     echo "       --force                  Force overwrite of existing target folder if exists"
     echo "       --target-folder=dir      Override default target dir (not recommended)"
     echo "       --add-change-request     Add script to SEAD Control System"
-    echo "       --sead-ccs-folder        Add script to SEAD Control System"
+    echo "       --sead-ccs-folder        Path to SEAD Control System"
     echo "       --add-to-git-clone       Deploy target (as defined in sqitch.conf"
     echo "       --deploy-change-request  Do deploy via the CCS system ton specified server and database"
     echo "       --deploy-target          Deploy target (as defined in sqitch.conf"
@@ -56,7 +56,7 @@ for i in "$@"; do
             usage ;
             exit 0 ;;
        *)
-        echo "unknown option: $i" ;
+        echo "error: unknown option $i" ;
         usage ;
         exit 0 ;
        ;;
@@ -105,11 +105,13 @@ function generate_change_request() {
     echo "end \$\$ language plpgsql;"                                                   >> $target_folder/${crid}.sql
 
 	echo "-- commit;"                                                                   >> $target_folder/${crid}.sql
+
+    echo "notice: change request has been generated to $target_folder"
 }
 
 function add_change_request_to_change_control_system()
 {
-    echo "NOTICE: Adding change request to ${sead_ccs_folder}..."
+    echo "notice: adding change request to ${sead_ccs_folder}..."
     crid=`get_cr_id`
 
     if [ ! -f $target_folder/${crid}.sql ]; then
@@ -118,7 +120,7 @@ function add_change_request_to_change_control_system()
     fi
 
     if [ == "YES" ]; then
-        echo "WARNING! Cloning temporary git repo"
+        echo "warning: Cloning temporary git repo"
         rm -rf ./sead_change_control
         git clone https://github.com/humlab-sead/sead_change_control.git
     fi
@@ -157,14 +159,14 @@ function add_change_request_to_change_control_system()
 
     cp -f $target_folder/${crid}.sql $target_deploy_file
 
-    echo "Deploy of ${crid} done!"
-    echo "Please remeber to commit changes to the SEAD CSS repository before deleting it!"
+    echo "notice: change request ${crid} has been added to SEAD CSS repository!"
+    echo "notice: please remember to commit repository!"
 }
 
 function deploy_change_request_to_target()
 {
     crid=`get_cr_id`
-    echo "NOTICE: Deploying CCS task ${crid} to ${deploy_target}..."
+    echo "notice: deploying change request to ${crid} to ${deploy_target}..."
     $sqitch_command deploy --target $deploy_target -C ./${target_project} ${crid}
 }
 

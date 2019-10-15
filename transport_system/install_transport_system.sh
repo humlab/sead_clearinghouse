@@ -31,9 +31,11 @@ done
 
 function usage() {
     echo "usage: $script_name [--dbhost=target-server] [--port=port] [--dbname=target-database]"
+    echo ""
     echo "       Please note that this script deploys the system  directly to the target DB."
     echo "       Use this only for testing. Proper install should be carried out by the SEAD CCS."
     echo "       Use ./deploy_transport_system.sh to create a change request in SEAD CCS."
+    echo ""
     exit 64
 }
 
@@ -53,7 +55,10 @@ function install_transport_system() {
 }
 
 echo "Deploying SEAD Clearinghouse transport system using URI $dbuser@$dbhost:$dbport/$dbname"
-echo -n " Running install..."
+
 check_install_options
+
+echo -n " Running install..."
 install_transport_system
+
 echo "done!"
