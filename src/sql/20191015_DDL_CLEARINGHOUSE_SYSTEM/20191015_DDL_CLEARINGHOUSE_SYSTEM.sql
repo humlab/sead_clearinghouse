@@ -1,6 +1,6 @@
 
 /***************************************************************************
-Author         
+Author         roger
 Date           
 Description    
 Prerequisites  
