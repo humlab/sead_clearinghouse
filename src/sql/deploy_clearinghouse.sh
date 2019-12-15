@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 set -e  # Exit script on any error
@@ -117,7 +116,7 @@ function generate_change_request() {
     cat ./05_review_site.sql                                                              >> $target_folder/${crid}.sql
     cat ./06_report_procedures.sql                                                        >> $target_folder/${crid}.sql
 
-    echo "call clearing_house.chown('clearing_house', 'clearinghouse_worker');"          >> $target_folder/${crid}.sql
+    echo "-- select clearing_house.chown('clearing_house', 'clearinghouse_worker');"      >> $target_folder/${crid}.sql
 
 	echo "-- commit;"                                                                     >> $target_folder/${crid}.sql
 
