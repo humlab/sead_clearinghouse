@@ -12,7 +12,6 @@ begin
 
 end $$ language plpgsql;
 
-
 create or replace function clearing_house_commit.generate_copy_in_script(
     p_submission_id int,
     p_entity_name text,
@@ -29,29 +28,24 @@ begin
  ** #ENTITY#
  ************************************************************************************************************************************/
 
-do \$\$ begin
-    raise notice ''Deploying %...'', ''#ENTITY#'';
-    drop table if exists clearing_house_commit.temp_#TABLE#;
-    create table clearing_house_commit.temp_#TABLE# as select * from public.#TABLE# where FALSE;
-end \$\$ language plpgsql;
+\\echo ''Deploying #ENTITY#'';
+
+drop table if exists clearing_house_commit.temp_#TABLE#;
+create table clearing_house_commit.temp_#TABLE# as select * from public.#TABLE# where FALSE;
 
 \\copy clearing_house_commit.temp_#TABLE# from program ''zcat -qac #DIR#/submission_#ID#_#ENTITY#.gz'' with (FORMAT text, DELIMITER E''\t'', ENCODING ''utf-8'');
 
-do \$\$ begin
+delete from public.#TABLE#
+    where #PK# in (select #PK# from clearing_house_commit.temp_#TABLE#);
 
-    delete from public.#TABLE#
-        where #PK# in (select #PK# from clearing_house_commit.temp_#TABLE#);
+insert into public.#TABLE#
+    select *
+    from clearing_house_commit.temp_#TABLE#
+    /* on conflict (v_pk_name) update set list-of-all-fields */;
 
-    insert into public.#TABLE#
-        select *
-        from clearing_house_commit.temp_#TABLE#
-        /* on conflict (v_pk_name) update set list-of-all-fields */;
+select clearing_house_commit.reset_serial_id(''public'', ''#TABLE#'', ''#PK#'');
 
-    perform clearing_house_commit.reset_serial_id(''public'', ''#TABLE#'', ''#PK#'');
-
-    drop table if exists clearing_house_commit.temp_#TABLE#;
-
-end \$\$ language plpgsql;
+drop table if exists clearing_house_commit.temp_#TABLE#;
 ';
 
     v_sql = replace(v_sql, '#TABLE#', p_table_name);
@@ -115,6 +109,4 @@ begin
     return v_sql;
 
 end $xyz$ language plpgsql;
-
-
 
