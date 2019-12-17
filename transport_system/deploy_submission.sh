@@ -9,7 +9,7 @@ fi
 script_name=`basename "$0"`
 dbuser=humlab_admin
 dbport=5432
-dbname=sead_staging_tng
+dbname=sead_staging
 submission_id=0
 target_folder=
 force=0
@@ -19,7 +19,7 @@ deploy_target=
 change_request_repository=$HOME/source/sead_change_control
 #change_request_repository=`pwd`/sead_change_control
 sqitch_command=./docker-sqitch.sh
-target_project=general
+target_project=submissions
 
 function usage() {
     echo "usage: $script_name [--dbhost=target-server] [--port=port] [--dbname=target-database] --id=x [--force] [--add-change-request] "
@@ -116,22 +116,22 @@ function generate_deploy() {
     echo "Reviewer"                                                                     >> $target_folder/${crid}.sql
     echo "Approver"                                                                     >> $target_folder/${crid}.sql
     echo "Idempotent     NO"                                                            >> $target_folder/${crid}.sql
-    echo "Notes          Use --single-transactin on execute!"                           >> $target_folder/${crid}.sql
+    echo "Notes          Use --single-transaction on execute!"                          >> $target_folder/${crid}.sql
     echo "***************************************************************************/" >> $target_folder/${crid}.sql
 
     #echo "BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;"                             >> $target_folder/${crid}.sql
-    echo "--set constraints all deferred;"                                                >> $target_folder/${crid}.sql
+    echo "set constraints all deferred;"                                                >> $target_folder/${crid}.sql
     echo "set client_min_messages to warning;"                                          >> $target_folder/${crid}.sql
-    echo "-- set autocommit off;"                                                       >> $target_folder/${crid}.sql
-    echo "-- begin;"                                                                    >> $target_folder/${crid}.sql
+    echo "\set autocommit off;"                                                         >> $target_folder/${crid}.sql
+    echo "begin;"                                                                       >> $target_folder/${crid}.sql
 
     # FIXME: relative cd should be enough /repo assumes docker-sqitch
-    echo "\cd /repo/general/deploy"                                                     >> $target_folder/${crid}.sql
+    echo "\cd /repo/submissions/deploy"                                                 >> $target_folder/${crid}.sql
 
     dbexec -c "\copy (select * from clearing_house_commit.generate_resolved_submission_copy_script($submission_id, '$target_folder', false)) to STDOUT; " \
         | sed  -e 's/\\n/\n/g' -e 's/\\r/\r/g' -e 's/\\\\/\\/g'                         >> $target_folder/${crid}.sql
 
-	echo "-- commit;"                                                                   >> $target_folder/${crid}.sql
+	echo "commit;"                                                                      >> $target_folder/${crid}.sql
 }
 
 function execute_deploy()
@@ -160,7 +160,7 @@ function add_change_request_to_repository()
     fi
 
     if [ ! -d $change_request_repository ]; then
-        echo "failure: cannot add change request since SEAD change control system folder $sead_ccs_folder is missing."
+        echo "failure: cannot add change request since SEAD change control system folder $change_request_repository is missing."
         echo "         please checkout system to this folder, or change location using."
         exit 64
     fi
@@ -186,9 +186,10 @@ function add_change_request_to_repository()
     #     exit 64
     # fi
 
-    target_deploy_file=$sead_ccs_folder/${target_project}/deploy/${crid}.sql
+    deploy_folder=$change_request_repository/${target_project}/deploy
+    deploy_file=$deploy_folder/${crid}.sql
 
-    if [ -f $target_deploy_file ]; then
+    if [ -f $deploy_file ]; then
         echo "failure: ccs task ${crid}.sql already exists (cannot resolve conflict)"
         exit 64
     fi
@@ -203,8 +204,8 @@ function add_change_request_to_repository()
     fi
 
     cd $current_folder
-    cp -f $target_folder/${crid}.sql $target_deploy_file
-    mv $target_folder $sead_ccs_folder/${target_project}/deploy
+    mv -f $target_folder/${crid}.sql $deploy_file
+    mv -f $target_folder $deploy_folder/
 
 }
 
