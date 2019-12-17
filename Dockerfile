@@ -65,6 +65,7 @@ COPY --from=builder-base /tmp/sead_clearinghouse/public /home/clearinghouse/publ
 COPY --from=builder-base /tmp/sead_clearinghouse/src/api /home/clearinghouse/public/api
 COPY --from=builder-base /tmp/sead_clearinghouse/src/vendor /home/clearinghouse/public/vendor
 
+
 #RUN groupadd -r clearinghouse_group && useradd -r -g clearinghouse_group clearinghouse_user
 #RUN chown -R clearinghouse_user:clearinghouse_group /home/clearinghouse
 
