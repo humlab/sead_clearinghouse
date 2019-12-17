@@ -10,3 +10,5 @@ alter default privileges in schema public, sead_utility
 grant all privileges on tables to clearinghouse_worker;
 alter default privileges in schema public, sead_utility
 grant all privileges on sequences to clearinghouse_worker;
+
+set role clearinghouse_worker;
