@@ -55,8 +55,10 @@ create or replace function clearing_house_commit.get_next_id(
     p_reset_id boolean = FALSE
 ) returns int as $$
 declare
-    v_next_id       int = 0;
-    v_sequence_name character varying;
+    v_next_id               int = 0;
+    v_sequence_name         character varying;
+    v_transport_id_sql      text = '';
+    v_next_transport_id     int = 0;
 begin
 
     if p_reset_id is TRUE then
@@ -69,6 +71,16 @@ begin
 
     v_sequence_name = pg_get_serial_sequence(p_table_name, p_column_name);
     v_next_id = nextval(v_sequence_name);
+
+    -- Find MAX assigned id from transport_system (pending insert)
+    v_transport_id_sql = format(
+        'select coalesce(max(transport_id), 0) + 1 from clearing_house.%s',
+        case when p_table_name not like '%.%' then p_table_name else split_part(p_table_name, '.', 2) end
+    );
+
+    execute v_transport_id_sql into v_next_transport_id;
+
+    v_next_id = GREATEST(v_next_id, v_next_transport_id);
 
     return v_next_id;
 
@@ -164,7 +176,7 @@ begin
                 continue;
             end if;
 
-            v_next_id = clearing_house_commit.get_next_id(p_schema_name, v_table_name, v_pk_name, TRUE);
+            v_next_id = clearing_house_commit.get_next_id(p_schema_name, v_table_name, v_pk_name, FALSE);
 
             raise notice 'UPDATING: % (% rows, using % as first id )', v_table_name, v_count, v_next_id;
 
