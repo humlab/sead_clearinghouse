@@ -482,7 +482,6 @@ Create Or Replace View clearing_house.view_clearinghouse_local_fk_references As
             And fk_v.local_db_id = v.fk_local_db_id
         Where v.fk_flag = true;
 
--- TODO: Review how public_db_id (cloned_db) are handled. They are filtered out from the following funciton since they have no attrbute values (only id)
 Create Or Replace Function clearing_house.fn_get_extracted_values_as_arrays(p_submission_id int, p_table_name_underscored character varying(255))
 Returns Table(
     submission_id int,
@@ -499,44 +498,53 @@ Begin
     ** Helper function for clearing_house.fn_copy_extracted_values_to_entity_table
     */
 
+    Drop Table If Exists temp_fk_references;
+
+    Create Temp Table If Not Exists temp_fk_references As
+        Select *
+        From clearing_house.view_clearinghouse_local_fk_references f
+        Where f.submission_id = p_submission_id
+          And f.table_id = v_table_id;
+
+    Create Index idx_temp_fk_references
+    	On temp_fk_references (
+    		submission_id, table_id, column_id, local_db_id
+    	);
+
     Select t.table_id, t.table_name Into STRICT v_table_id, v_table_name
     From clearing_house.tbl_clearinghouse_submission_tables t
     Where table_name_underscored = p_table_name_underscored;
 
     Return Query
-        With fk_references as (
-            Select *
-            From clearing_house.view_clearinghouse_local_fk_references f
-            Where f.submission_id = p_submission_id
-              And f.table_id = v_table_id
-        )
-            Select p_submission_id, v_table_name, r.local_db_id, r.public_db_id, array_agg(
-                Case when v.fk_flag = TRUE Then
-                        Case When Not v.fk_public_db_id Is Null And f.fk_local_db_id Is Null
-                        Then v.fk_public_db_id::text Else (-v.fk_local_db_id)::text End
-                Else v.value End
-                Order by c.column_id asc
-            ) as values
-            From clearing_house.tbl_clearinghouse_submission_xml_content_records r
-            Join clearing_house.tbl_clearinghouse_submission_xml_content_columns c
-              On c.submission_id = r.submission_id
-             And c.table_id = r.table_id
-            /* Left */ Join clearing_house.tbl_clearinghouse_submission_xml_content_values v
-              On v.submission_id = r.submission_id
-             And v.table_id = r.table_id
-             And v.local_db_id = r.local_db_id
-             And v.column_id = c.column_id
-            /* Check if public record pointed to by FK exists in local DB. In such case set FK value to -fk_local_db_id */
-            Left Join fk_references f
-              On f.submission_id = r.submission_id
-             And f.table_id = r.table_id
-             And f.column_id = c.column_id
-             And f.local_db_id = v.local_db_id
-             And f.fk_local_db_id = v.fk_local_db_id
-            Where 1 = 1
-             And r.submission_id = p_submission_id
-             And r.table_id = v_table_id
-            Group By r.local_db_id, r.public_db_id;
+		Select p_submission_id, v_table_name, r.local_db_id, r.public_db_id, array_agg(
+			Case when v.fk_flag = TRUE Then
+					Case When Not v.fk_public_db_id Is Null And f.fk_local_db_id Is Null
+					Then v.fk_public_db_id::text Else (-v.fk_local_db_id)::text End
+			Else v.value End
+			Order by c.column_id asc
+		) as values
+		From clearing_house.tbl_clearinghouse_submission_xml_content_records r
+		Join clearing_house.tbl_clearinghouse_submission_xml_content_columns c
+		  On c.submission_id = r.submission_id
+		 And c.table_id = r.table_id
+		/* Left */ Join clearing_house.tbl_clearinghouse_submission_xml_content_values v
+		  On v.submission_id = r.submission_id
+		 And v.table_id = r.table_id
+		 And v.local_db_id = r.local_db_id
+		 And v.column_id = c.column_id
+		/* Check if public record pointed to by FK exists in local DB. In such case set FK value to -fk_local_db_id */
+		Left Join temp_fk_references f
+		  On f.submission_id = r.submission_id
+		 And f.table_id = r.table_id
+		 And f.column_id = c.column_id
+		 And f.local_db_id = v.local_db_id
+		 And f.fk_local_db_id = v.fk_local_db_id
+		Where 1 = 1
+		 And r.submission_id = p_submission_id
+		 And r.table_id = v_table_id
+		Group By r.local_db_id, r.public_db_id;
+
+    Drop Table If Exists temp_fk_references;
 
 End $$ Language plpgsql;
 
