@@ -86,6 +86,79 @@ begin
 
 end $$ language plpgsql;
 
+
+create or replace function clearing_house_commit.allocate_sequence_ids()
+returns void as
+$$
+declare
+  v_data record;
+  v_sql text;
+  v_max_transport_id int;
+  v_max_pk_value int;
+  v_sequence_name character varying;
+begin
+
+	for v_data in (
+
+		with clearinghouse_pk_columns as (
+
+			select table_name_underscored as tablename, st.column_name as columnname
+			from clearing_house.tbl_clearinghouse_submission_xml_content_tables cxt
+			join clearing_house.tbl_clearinghouse_submission_tables ct using (table_id)
+			join clearing_house.fn_dba_get_sead_public_db_schema() st on st.table_name = ct.table_name_underscored
+			where TRUE
+			  and st.table_schema = 'public'
+			  and 'YES' in (st.is_pk)
+			group by table_name_underscored, column_name
+
+		), sead_sequence_columns as (
+
+			with sequences as (
+				select oid, relname as sequencename
+				from pg_class
+				where relkind = 'S'
+			)
+				select sch.nspname as schemaname, tab.relname as tablename, col.attname as columnname, col.attnum as columnnumber, seqs.sequencename
+				from pg_attribute col
+				join pg_class tab on col.attrelid = tab.oid
+				join pg_namespace sch on tab.relnamespace = sch.oid
+				left join pg_attrdef def on tab.oid = def.adrelid and col.attnum = def.adnum
+				left join pg_depend deps on def.oid = deps.objid and deps.deptype = 'n'
+				left join sequences seqs on deps.refobjid = seqs.oid
+				where sch.nspname = 'public'
+				  and col.attnum > 0
+				  and seqs.sequencename is not null
+				order by sch.nspname, tab.relname, col.attnum
+
+		) select *
+		  from clearinghouse_pk_columns
+		  join sead_sequence_columns using (tablename, columnname)
+
+	) Loop
+
+		v_sql := format('select max(transport_id) from clearing_house.%s', v_data.tablename);
+
+		execute v_sql into v_max_transport_id;
+
+		v_sql := format('select max(%s) from public.%s', v_data.columnname, v_data.tablename);
+
+		execute v_sql into v_max_pk_value;
+
+		if coalesce(v_max_transport_id, 0) > coalesce(v_max_pk_value,0) then
+
+			v_sequence_name = pg_get_serial_sequence(format('%s', v_data.tablename), v_data.columnname);
+
+			raise info 'Adjusting sequence % on %.% to % (was %)',
+				v_sequence_name, v_data.tablename, v_data.columnname, v_max_transport_id, v_max_pk_value;
+
+			perform setval(v_seq_id, v_next_id);
+
+		end if;
+
+	End Loop;
+
+end $$ language plpgsql;
+
 /*********************************************************************************************************************************
 **  Function    clearing_house_commit.resolve_primary_key
 **  Who         Roger Mähler

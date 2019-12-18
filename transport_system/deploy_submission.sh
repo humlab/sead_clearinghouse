@@ -115,7 +115,7 @@ function generate_deploy() {
     echo "Prerequisites  "                                                              >> $target_folder/${crid}.sql
     echo "Reviewer"                                                                     >> $target_folder/${crid}.sql
     echo "Approver"                                                                     >> $target_folder/${crid}.sql
-    echo "Idempotent     NO"                                                            >> $target_folder/${crid}.sql
+    echo "Idempotent     NO!                                                            >> $target_folder/${crid}.sql
     echo "Notes          Use --single-transaction on execute!"                          >> $target_folder/${crid}.sql
     echo "***************************************************************************/" >> $target_folder/${crid}.sql
 
@@ -130,6 +130,9 @@ function generate_deploy() {
 
     dbexec -c "\copy (select * from clearing_house_commit.generate_resolved_submission_copy_script($submission_id, '$target_folder', false)) to STDOUT; " \
         | sed  -e 's/\\n/\n/g' -e 's/\\r/\r/g' -e 's/\\\\/\\/g'                         >> $target_folder/${crid}.sql
+
+	echo "select clearing_house_commit.allocate_sequence_ids();"                        >> $target_folder/${crid}.sql
+	echo "select clearing_house_commit.commit_submission($submission_id);"              >> $target_folder/${crid}.sql
 
 	echo "commit;"                                                                      >> $target_folder/${crid}.sql
 }
